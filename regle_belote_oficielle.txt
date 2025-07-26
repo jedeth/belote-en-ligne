@@ -1,0 +1,142 @@
+Les règles officielle de la Belote
+/ Stratégie de belote / Par Admin
+Le texte ci-dessous est un résumé des règles de la belote ! Vous pouvez retrouver les règles officielles complètes ici au format PDF.
+
+La belote se joue à 4 joueurs répartis en deux équipes: Nord/Sud contre Est/Ouest.
+
+La distribution des cartes
+On utilise un jeu de 32 cartes : du 7 à l’As de chaque couleur.
+Le donneur distribue cinq cartes à chacun en commençant par le joueur à sa droite. Le donneur retourne alors la carte suivante et la place en évidence sur le tapis. Le tour de prise peut commencer.
+
+La prise
+Tour de prise
+Les joueurs s’expriment chacun à leur tour en commençant par le joueur placé à droite du donneur. Chaque joueur peut:
+
+soit passer son tour
+soit prendre en désignant clairement l’atout qu’il choisit. A ce moment, le tour de prise est terminé.
+Pour le premier tour, l’atout ne peut être que celui de la couleur de la carte retournée. Si les 4 joueurs passent, un second tour commence où l’atout peut être choisi parmi les trois autres couleurs.
+Lorsqu’un joueur prend, le donneur lui donne la carte retournée, puis distribue 3 cartes à chacun (sauf au preneur: 2 + la retournée) en commencant par le joueur à sa droite.
+Si les 4 joueurs passent de nouveau, le tour est terminé. Le joueur placé à la droite du donneur devient le nouveau donneur et les cartes sont redistribuées.
+
+Contrat
+En prenant, le joueur s’engage simplement à réaliser plus de points que la défense. Le nombre de points comprend non seulement les points remportés lors des plis, mais aussi la belote ou les annonces éventuelles.
+
+Le jeu de la carte
+Après le tour de prise, les preneurs vont tenter de réaliser leur contrat au cours du jeu de la carte. Le joueur placé à droite du donneur joue la carte de son choix; la couleur de cette carte fixe la couleur demandée. Les autres jouent chacun à leur tour en respectant les règles suivantes :
+
+Règles
+1. On doit toujours fournir la couleur demandée à l’entame si l’on en possède
+2. Si l’on ne possède pas de carte dans la couleur demandée, deux cas se présentent :
+
+le partenaire est maître (il a joué la meilleure carte sur le tapis): on peut alors jouer n’importe quelle carte; on se « défausse ». On peut également couper si bon nous semble.
+le partenaire n’est pas maître ou n’a pas encore joué: on est tenu de couper en jouant un atout si l’on en possède, sinon on se défausse en jouant n’importe quelle carte.
+3. Si l’on est conduit à jouer de l’atout, on est obligé de « monter » à l’atout, c’est-à-dire mettre un atout plus fort que celui qui est déjà sur le tapis. Si cela s’avère impossible, on devra choisir un atout plus faible.
+
+Fin du pli
+Le pli est remporté par le joueur qui a joué la plus forte carte à l’atout ou, à défaut, à la couleur demandée. L’entame du pli suivant est réalisée par le joueur qui vient de remporter le dernier pli. Lorsque toutes les cartes ont été jouées, on procède au calcul de la marque.
+
+Belote
+La Belote : il s’agit du roi et de la dame d’atout réunis dans la même main.
+Valeur: 20 points.
+
+La belote:
+
+s’annonce au moment où l’on joue la première de ces deux cartes par « Belote », puis, optionnellement, lorsque l’on joue la seconde carte: « Rebelote ».
+est imprenable: même en cas de chute, le preneur marquera ces 20 points.
+Ordre et valeur des cartes
+Valeur des cartes
+L’ordre et la valeur des cartes varient selon qu’il s’agisse de l’atout ou d’une autre couleur. Un atout est toujours plus fort qu’une carte à une autre couleur.
+
+La marque
+Lorsque le dernier pli vient de se jouer, chaque camp procède au décompte de ses points en additionnant les points des cartes qu’il a remportées aux points des belotes et annonces éventuelles.
+
+Dix de Der
+Un bonus spécial de 10 points appelé « Dix de Der » est attribué au camp qui remporte le dernier pli. En cas de « Capot », c’est-à-dire si l’adversaire n’a remporté aucun pli, ce bonus est de 100 points, ce qui porte le nombre total de points du jeu à 252 au lieu de 162.
+
+Contrat réussi
+Si les preneurs totalisent plus de points que la défense, le contrat est rempli, leur score correspond à la somme des points réalisés (plis+belote+annonces). Leurs adversaires marquent également leurs points (plis+belote+annonces).
+
+Litige
+En cas d’égalité parfaite au score (Exemple: 81-81), il y a « litige »: la défense marque ses points, mais les points des preneurs sont remis en jeu et seront offerts en bonus aux vainqueurs de la prochaine prise.
+Nota: en mode défi les points ne sont pas conservés d’une partie sur l’autre.
+
+Chute
+Si les preneurs totalisent moins de points que la défense, le contrat est chuté, les preneurs ne marquent rien, excepté la belote qui est imprenable. Leurs adversaires marquent 162 points de chute + leurs annonces + les annonces des preneurs.
+
+Capot
+En cas de capot, c’est-à-dire les huit plis remportés par le même camp, le camp perdant ne marque rien, excepté la belote qui est imprenable. Leurs adversaires marquent 252 points de capot + leurs annonces + les annonces de l’autre camp.
+
+Fin de la partie
+Le premier camp atteignant le nombre de points fixé remporte la partie. Si les deux camps atteignent le nombre de points fixé ensemble, c’est celui qui a le plus de points au-delà qui remporte la partie.
+En cas de nouvelle égalité, une dernière donne départage les deux camps.
+
+Nota: en mode défi, la partie se joue en un nombre de donnes défini. Celui qui a la meilleure différence de points l’emporte.
+
+Certaines combinaisons de cartes peuvent vous rapporter des points. Elles sont listées ci-dessous de la plus forte à la plus faible.
+
+Attention: une carte ne peut compter que pour une seule annonce à la fois, sauf pour la belote.
+
+A. Valeur des annonces 
+
+Le Carré
+
+4 cartes de même hauteur. La valeur d’un carré dépend de sa hauteur:
+
+4 Valets: 200 Points
+4 Neuf: 150 Points
+4 As: 100 Points
+4 Dix: 100 Points
+4 Rois: 100 Points
+4 Dames: 100 Points
+Remarque : les carrés de 7 et 8 ne valent rien. Un carré de 100 points est plus fort qu’un cent.
+
+Le Cent
+
+5 cartes qui se suivent dans la même couleur en respectant l’ordre suivant: 7 8 9 10 Valet Dame Roi As.Valeur: 100 points.
+
+Le Cinquante
+
+4 cartes qui se suivent dans la même couleur.Valeur: 50 points.
+
+La Tierce
+
+3 cartes qui se suivent de la même couleur.Valeur: 20 points.
+
+La Belote
+
+Il s’agit du roi et de la dame d’atout réunis dans la même main.
+
+Valeur: 20 points.
+
+ Elle s’annonce au moment où l’on joue la première de ces deux cartes par « Belote ». Lors de la seconde carte, le joueur devra dire « Rebelote ». En cas d’omission du terme Belote, celle-ci ne sera pas comptabilisée. En cas d’omission du terme « Rebelote », une tolérance sera accordée si le joueur s’en aperçoit au plus tard lors de la comptabilisation des points. Cette tolérance s’applique une seule fois par équipe et par partie.
+ Elle est imprenable même en cas de chute ou de capot, le preneur/ les défenseurs marqueront ces 20 points.
+Important : Il est possible de terminer sur une belote. La seule condition est de ne pas être capot.
+
+On ne termine jamais une partie sur un capot accompagné d’une belote. Si une équipe est à 10 points de la victoire, est capot et marque une belote, les 20 points de la belote sont comptabilisés mais un pli supplémentaire devra être effectué pour valider la partie.
+
+B. Déclaration d’une annonce
+
+Au premier tour, chacun des joueurs annonce simplement la hauteur de son annonce en suivant l’ordre après le donneur.
+
+Au second tour, le joueur ayant une annonce la dévoile juste avant de jouer sa carte.
+
+C. Quand montrer son annonce
+
+Lorsque la première carte du deuxième pli est jouée, on procède au dévoilement des annonces.
+
+En cas d’égalité (ex: tierce contre tierce) c’est l’annonce qui possède la carte la plus élevée qui l’emporte: une tierce à l’as bat une tierce à la dame.
+
+En cas de nouvelle égalité, une annonce à l’atout est supérieure.
+
+Si on ne peut toujours pas départager les deux camps, il y a « égalité » et aucune annonce ne compte.
+Si un camp a 3 tierces et que l’autre camp une seule. Si les 2 meilleures annonces sont à égalité, aucune des annonces n’est prise en compte.
+
+Processus à respecter en cas d’annonces équivalentes entre les deux équipes
+
+Si 2 joueurs annoncent une tierce, lors du second tour, le premier à jouer annonce la hauteur de sa tierce (la hauteur symbolisant la plus forte carte de l’annonce, 9-10-Valet, s’annonce Tierce hauteur Valet). Le joueur ayant également annoncé une tierce réplique en disant « pas mieux » ou bien donne sa hauteur si celle-ci est supérieure.
+
+Seul le joueur ayant la meilleure annonce doit montrer sa tierce. Celui dont l’annonce est battue n’a pas à la montrer.
+
+D. Renonce
+
+Si un joueur se révèle incapable de montrer les combinaisons qu’il a annoncées, il y a renonce: le camp adverse marque les points qu’il a annoncés.

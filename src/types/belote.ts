@@ -1,40 +1,41 @@
 // src/types/belote.ts
 
-// Les couleurs possibles pour les cartes
 export type Suit = 'Pique' | 'Coeur' | 'Carreau' | 'Trefle';
-
-// Les valeurs possibles pour les cartes
 export type Rank = '7' | '8' | '9' | '10' | 'Valet' | 'Dame' | 'Roi' | 'As';
 
-// L'objet qui représente une carte unique
 export interface Card {
   suit: Suit;
   rank: Rank;
 }
 
-// L'objet qui représente un joueur
 export interface Player {
-  id: string; // L'identifiant unique fourni par Socket.IO
+  id: string;
   name: string;
-  hand: Card[]; // La main du joueur est un tableau de cartes
+  hand: Card[];
 }
 
-// L'objet qui représente une équipe
+export interface PlayedCard {
+  playerId: string;
+  card: Card;
+}
+
 export interface Team {
-  name: 'Équipe A' | 'Équipe B';
-  players: [Player, Player];
-  score: number;
+    name: 'Équipe A' | 'Équipe B';
+    players: Player[];
+    score: number;
+    collectedCards: Card[];
 }
 
-// Les phases possibles du jeu
 export type GamePhase = 'waiting' | 'bidding' | 'bidding_round_2' | 'playing' | 'end';
 
-// L'objet qui représente l'intégralité de l'état du jeu
 export interface GameState {
   phase: GamePhase;
   players: Player[];
+  teams: Team[];
   deck: Card[];
-  biddingCard?: Card; // La carte retournée pour la prise
-  currentPlayerTurn?: string; // L'ID du joueur dont c'est le tour
+  biddingCard?: Card;
+  currentPlayerTurn?: string;
+  takerId?: string; // On garde l'ID du preneur
   trumpSuit?: Suit;
+  currentTrick: PlayedCard[];
 }

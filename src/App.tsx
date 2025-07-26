@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { GameState, Suit } from './types/belote';
+import { GameState, Suit, Card } from './types/belote.ts';
 
 const socket: Socket = io('http://localhost:3000');
 const SUITS: Suit[] = ['Pique', 'Coeur', 'Carreau', 'Trefle'];
@@ -27,14 +27,20 @@ function App() {
     socket.emit('playerBid', choice);
   };
   
-  const me = gameState?.players.find(p => p.id === socket.id);
-  
-  // Si on n'a pas encore rejoint la partie
-  if (!me) {
-    // ### CORRECTION ICI ###
-    // On vérifie que gameState et gameState.players existent avant de lire leur longueur
-    const isGameFull = (gameState?.players?.length ?? 0) === 4;
+  const handlePlayCard = (card: Card) => {
+    if (gameState?.currentPlayerTurn === socket.id) {
+      socket.emit('playCard', card);
+    }
+  };
 
+  const handleNextHand = () => {
+    socket.emit('nextHand');
+  };
+
+  const me = gameState?.players.find(p => p.id === socket.id);
+
+  if (!me) {
+    const isGameFull = (gameState?.players?.length ?? 0) === 4;
     return (
       <div>
         <h1>Rejoindre la partie de Belote</h1>
@@ -53,18 +59,29 @@ function App() {
     );
   }
 
-  // --- Rendu du composant principal (inchangé) ---
   return (
     <div>
       <h1>Partie de Belote - Phase: {gameState?.phase}</h1>
       <h2>Bonjour, {me.name} !</h2>
 
+      {gameState?.teams.map(team => (
+        <div key={team.name} style={{float: 'right', marginLeft: '20px', border: '1px solid grey', padding: '5px'}}>
+          <strong>{team.name}</strong>: {team.score} points
+        </div>
+      ))}
+
+      {gameState && (gameState.phase !== 'waiting' && gameState.phase !== 'end') && (
+        <div style={{ margin: '20px 0', padding: '10px', border: '2px solid blue', clear: 'both' }}>
+          <h3>Infos de la partie</h3>
+          {gameState.phase === 'bidding' && <p>Carte retournée: {gameState.biddingCard?.rank} de {gameState.biddingCard?.suit}</p>}
+          {gameState.phase === 'playing' && <p>Atout: <strong>{gameState.trumpSuit}</strong></p>}
+          <p>Au tour de: <strong>{gameState.players.find(p => p.id === gameState.currentPlayerTurn)?.name}</strong></p>
+        </div>
+      )}
+
       {gameState?.phase === 'bidding' && (
-        <div style={{ margin: '20px', padding: '10px', border: '2px solid red' }}>
+        <div style={{ margin: '20px 0', padding: '10px', border: '2px solid red' }}>
           <h3>Phase de prise (1er Tour)</h3>
-          <p>Carte retournée: {gameState.biddingCard?.rank} de {gameState.biddingCard?.suit}</p>
-          <p>Au tour de: {gameState.players.find(p => p.id === gameState.currentPlayerTurn)?.name}</p>
-          
           {gameState.currentPlayerTurn === socket.id && (
             <div>
               <button onClick={() => handleBid('take')}>Prendre</button>
@@ -75,21 +92,14 @@ function App() {
       )}
 
       {gameState?.phase === 'bidding_round_2' && (
-        <div style={{ margin: '20px', padding: '10px', border: '2px solid orange' }}>
+        <div style={{ margin: '20px 0', padding: '10px', border: '2px solid orange' }}>
           <h3>Phase de prise (2ème Tour)</h3>
-          <p>Au tour de: {gameState.players.find(p => p.id === gameState.currentPlayerTurn)?.name}</p>
-          
           {gameState.currentPlayerTurn === socket.id && (
             <div>
               <p>Choisissez une couleur :</p>
               {SUITS
-                // On ajoute ce filtre pour exclure la couleur du 1er tour
                 .filter(suit => suit !== gameState.biddingCard?.suit)
-                .map(suit => (
-                  <button key={suit} onClick={() => handleBid(suit)}>
-                    {suit}
-                  </button>
-                ))}
+                .map(suit => (<button key={suit} onClick={() => handleBid(suit)}>{suit}</button>))}
               <button onClick={() => handleBid('pass')}>Passer</button>
             </div>
           )}
@@ -97,20 +107,55 @@ function App() {
       )}
 
       {gameState?.phase === 'playing' && (
-         <div style={{ margin: '20px', padding: '10px', border: '2px solid green' }}>
-          <h3>Phase de Jeu</h3>
-          <p>Atout: <strong>{gameState.trumpSuit}</strong></p>
-          <p>C'est à <strong>{gameState.players.find(p => p.id === gameState.currentPlayerTurn)?.name}</strong> de jouer.</p>
+         <div style={{ margin: '20px 0', padding: '10px', border: '2px solid green', minHeight: '120px' }}>
+          <h3>Tapis de Jeu (Pli en cours)</h3>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            {gameState.currentTrick.map(({playerId, card}, index) => (
+              <div key={index} style={{textAlign: 'center'}}>
+                <div style={{ border: '1px solid black', padding: '10px', width: '80px' }}>
+                  {card.rank} de {card.suit}
+                </div>
+                <span>{gameState.players.find(p => p.id === playerId)?.name}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {gameState?.phase === 'end' && (
+        <div style={{ margin: '20px 0', padding: '10px', border: '2px solid purple' }}>
+          <h3>Fin de la manche</h3>
+          {gameState.teams.map(team => (
+            <div key={team.name}>
+              <h4>{team.name} (Score Total: {team.score})</h4>
+              <p>Cartes ramassées : {team.collectedCards.map(c => `${c.rank} ${c.suit}`).join(', ')}</p>
+            </div>
+          ))}
+          {gameState.players[0].id === socket.id && (
+            <button onClick={handleNextHand}>Manche suivante</button>
+          )}
         </div>
       )}
 
       <h3>Votre main ({me.hand.length} cartes) :</h3>
       <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-        {me.hand.map((card, index) => (
-          <div key={index} style={{ border: '1px solid black', padding: '10px' }}>
-            {card.rank} de {card.suit}
-          </div>
-        ))}
+        {me.hand.map((card, index) => {
+          const isMyTurn = gameState?.currentPlayerTurn === socket.id;
+          return (
+            <div 
+              key={index} 
+              onClick={() => handlePlayCard(card)}
+              style={{ 
+                border: '1px solid black', 
+                padding: '10px',
+                cursor: isMyTurn ? 'pointer' : 'not-allowed',
+                backgroundColor: isMyTurn ? '#90ee90' : 'white'
+              }}
+            >
+              {card.rank} de {card.suit}
+            </div>
+          )
+        })}
       </div>
     </div>
   );
