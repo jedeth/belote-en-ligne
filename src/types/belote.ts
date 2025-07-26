@@ -27,7 +27,7 @@ export interface Team {
 }
 
 // Les phases possibles du jeu
-export type GamePhase = 'waiting' | 'bidding' | 'playing' | 'end';
+export type GamePhase = 'waiting' | 'bidding' | 'bidding_round_2' | 'playing' | 'end';
 
 // L'objet qui représente l'intégralité de l'état du jeu
 export interface GameState {
