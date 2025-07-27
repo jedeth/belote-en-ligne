@@ -1,6 +1,6 @@
 // src/logic/gameLogic.ts
 
-import { Suit, Rank, Card, PlayedCard, Team } from './belote';
+import { Suit, Rank, Card, PlayedCard, Team } from '../types/belote.ts';
 
 const suits: Suit[] = ['Pique', 'Coeur', 'Carreau', 'Trefle'];
 const ranks: Rank[] = ['7', '8', '9', '10', 'Valet', 'Dame', 'Roi', 'As'];
@@ -9,7 +9,7 @@ const CARD_POINTS_NORMAL: { [key in Rank]: number } = { '7': 0, '8': 0, '9': 0, 
 const CARD_POINTS_TRUMP: { [key in Rank]: number } = { '7': 0, '8': 0, '9': 14, '10': 10, 'Valet': 20, 'Dame': 3, 'Roi': 4, 'As': 11 };
 
 const NORMAL_ORDER: { [key in Rank]: number } = { '7': 0, '8': 1, '9': 2, 'Valet': 3, 'Dame': 4, 'Roi': 5, '10': 6, 'As': 7 };
-const TRUMP_ORDER: { [key in Rank]: number } = { '7': 0, '8': 1, '9': 5, 'Roi': 2, 'Dame': 3, '10': 4, 'As': 6, 'Valet': 7 };
+const TRUMP_ORDER: { [key in Rank]: number } = { '7': 0, '8': 1, 'Dame': 2, 'Roi': 3, '10': 4, 'As': 5, '9': 6, 'Valet': 7 };
 
 export function createDeck(): Card[] {
   const deck: Card[] = [];

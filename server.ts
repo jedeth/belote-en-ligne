@@ -6,7 +6,9 @@ import { Server } from 'socket.io';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
-import { createDeck, shuffleDeck, determineTrickWinner, calculateScores } from './server/gameLogic.ts';
+// Chemin d'import corrigé
+import { createDeck, shuffleDeck, determineTrickWinner, calculateScores } from './src/logic/gameLogic.ts'; 
+// Extension .ts ajoutée
 import { Player, GameState, Suit, Card, Team } from './src/types/belote.ts';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -14,11 +16,14 @@ const __dirname = dirname(__filename);
 const app = express();
 const httpServer = http.createServer(app);
 const io = new Server(httpServer, {
-  cors: { origin: 'http://localhost:5173', methods: ['GET', 'POST'] },
+  // Règle CORS modifiée pour accepter toutes les connexions
+  cors: { 
+    origin: "*", 
+    methods: ['GET', 'POST'] 
+  },
 });
 const PORT = process.env.PORT || 3000;
 app.use(express.static(path.join(__dirname, 'dist')));
-
 let gameState: GameState = {
   phase: 'waiting',
   players: [],
@@ -68,6 +73,10 @@ io.on('connection', (socket) => {
 
   socket.on('joinGame', (playerName: string) => {
     if (gameState.players.length >= 4) return;
+    
+    // On affiche le message uniquement quand un VRAI joueur rejoint
+    console.log(`Le joueur ${playerName} (${socket.id}) a rejoint la partie.`);
+
     const newPlayer: Player = { id: socket.id, name: playerName, hand: [] };
     gameState.players.push(newPlayer);
     updateAndBroadcastGameState();

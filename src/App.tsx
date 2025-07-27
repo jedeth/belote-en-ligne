@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { GameState, Suit, Card } from './types/belote.ts';
 
-const socket: Socket = io('http://localhost:3000');
+const SERVER_URL = `http://${window.location.hostname}:3000`;
+const socket: Socket = io(SERVER_URL);
 const SUITS: Suit[] = ['Pique', 'Coeur', 'Carreau', 'Trefle'];
 
 function App() {
