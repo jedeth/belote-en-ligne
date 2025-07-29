@@ -43,3 +43,5 @@ export interface GameState {
   roundPoints?: { [teamName: string]: number };
   beloteHolderId?: string;
 }
+
+export const WINNING_SCORE = 701;

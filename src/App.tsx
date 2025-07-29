@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { GameState, Suit, Card } from './types/belote.ts';
+import { GameState, Suit, Card, WINNING_SCORE } from './types/belote.ts';
+import CardImage from './components/CardImage.tsx';
 
 const socket: Socket = io(`http://${window.location.hostname}:3000`);
 const SUITS: Suit[] = ['Pique', 'Coeur', 'Carreau', 'Trefle'];
@@ -118,7 +119,12 @@ function App() {
       {gameState && (gameState.phase !== 'waiting' && gameState.phase !== 'end' && gameState.phase !== 'game_over') && (
         <div style={{ margin: '20px 0', padding: '10px', border: '2px solid blue' }}>
           <h3>Infos de la partie</h3>
-          {gameState.phase === 'bidding' && <p>Carte retournée: {gameState.biddingCard?.rank} de {gameState.biddingCard?.suit}</p>}
+          {gameState.phase === 'bidding' && gameState.biddingCard && (
+            <div style={{ textAlign: 'center' }}>
+              <p>Carte retournée :</p>
+              <CardImage card={gameState.biddingCard} />
+            </div>
+          )}
           {gameState.phase === 'playing' && <p>Atout: <strong>{gameState.trumpSuit}</strong> | Preneur: <strong>{gameState.takerTeamName}</strong></p>}
           <p>Au tour de: <strong>{gameState.players.find(p => p.id === gameState.currentPlayerTurn)?.name}</strong></p>
         </div>
@@ -152,14 +158,14 @@ function App() {
       )}
 
       {gameState?.phase === 'playing' && (
-         <div style={{ margin: '20px 0', padding: '10px', border: '2px solid green', minHeight: '120px' }}>
+         <div style={{ margin: '20px 0', padding: '10px', border: '2px solid green', minHeight: '150px' }}>
           <h3>Tapis de Jeu (Pli en cours)</h3>
-          <div style={{ display: 'flex', gap: '10px' }}>
+          <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', alignItems: 'flex-start' }}>
             {gameState.currentTrick.map(({playerId, card}, index) => {
               const player = gameState.players.find(p => p.id === playerId);
               return (
-              <div key={index} style={{textAlign: 'center', border: '1px solid black', padding: '10px'}}>
-                <p style={{margin: 0, fontWeight: 'bold'}}>{card.rank} de {card.suit}</p>
+              <div key={index} style={{textAlign: 'center'}}>
+                <CardImage card={card} />
                 <span>{player?.name} {!player?.isConnected && '(déconnecté)'}</span>
               </div>
             )})}
@@ -208,21 +214,17 @@ function App() {
       <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
         {me.hand.map((card, index) => {
           return (
-            <div 
+            <CardImage 
               key={index} 
+              card={card}
               onClick={() => handlePlayCard(card)}
               style={{ 
-                border: '1px solid black', 
-                padding: '20px 10px',
-                minWidth: '60px',
-                textAlign: 'center',
-                borderRadius: '5px',
                 cursor: isMyTurn ? 'pointer' : 'not-allowed',
-                backgroundColor: isMyTurn ? '#90ee90' : 'white'
+                outline: isMyTurn ? '3px solid lightgreen' : 'none',
+                transform: isMyTurn ? 'translateY(-10px)' : 'none',
+                transition: 'all 0.2s ease-in-out',
               }}
-            >
-              {card.rank} de {card.suit}
-            </div>
+            />
           )
         })}
       </div>
