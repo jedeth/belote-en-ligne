@@ -58,7 +58,8 @@ export function determineTrickWinner(trick: PlayedCard[], trumpSuit: Suit): Play
   return winningCard;
 }
 
-export function calculateScores(teams: Team[], takerTeamName: string, dixDeDerWinnerTeamName: string, trumpSuit: Suit) {
+// ### MODIFICATION ICI : On renomme la fonction ###
+export function calculateRoundScores(teams: Team[], takerTeamName: string, dixDeDerWinnerTeamName: string, trumpSuit: Suit) {
   const takerTeam = teams.find(t => t.name === takerTeamName)!;
   const defendingTeam = teams.find(t => t.name !== takerTeamName)!;
 

@@ -12,6 +12,7 @@ export interface Player {
   id: string;
   name: string;
   hand: Card[];
+  isConnected: boolean; // Ajout pour suivre l'état de la connexion
 }
 
 export interface PlayedCard {
@@ -24,9 +25,10 @@ export interface Team {
     players: Player[];
     score: number;
     collectedCards: Card[];
+    hasDeclaredBelote: boolean;
 }
 
-export type GamePhase = 'waiting' | 'bidding' | 'bidding_round_2' | 'playing' | 'end';
+export type GamePhase = 'waiting' | 'bidding' | 'bidding_round_2' | 'playing' | 'end' | 'game_over';
 
 export interface GameState {
   phase: GamePhase;
@@ -35,7 +37,9 @@ export interface GameState {
   deck: Card[];
   biddingCard?: Card;
   currentPlayerTurn?: string;
-  takerId?: string; // On garde l'ID du preneur
+  takerTeamName?: string;
   trumpSuit?: Suit;
   currentTrick: PlayedCard[];
+  roundPoints?: { [teamName: string]: number };
+  beloteHolderId?: string;
 }

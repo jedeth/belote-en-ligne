@@ -6,24 +6,21 @@ import { Server } from 'socket.io';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
-// Chemin d'import corrigé
-import { createDeck, shuffleDeck, determineTrickWinner, calculateScores } from './src/logic/gameLogic.ts'; 
-// Extension .ts ajoutée
+import { createDeck, shuffleDeck, determineTrickWinner, calculateRoundScores } from './src/logic/gameLogic.ts';
 import { Player, GameState, Suit, Card, Team } from './src/types/belote.ts';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+const PORT = process.env.PORT || 3000;
+const WINNING_SCORE = 1000;
+
 const app = express();
 const httpServer = http.createServer(app);
 const io = new Server(httpServer, {
-  // Règle CORS modifiée pour accepter toutes les connexions
   cors: { 
     origin: "*", 
     methods: ['GET', 'POST'] 
   },
 });
-const PORT = process.env.PORT || 3000;
-app.use(express.static(path.join(__dirname, 'dist')));
+
 let gameState: GameState = {
   phase: 'waiting',
   players: [],
@@ -44,13 +41,16 @@ function startNewHand() {
   
   if (!gameState.teams || gameState.teams.length === 0) {
     gameState.teams = [
-      { name: 'Équipe A', players: [gameState.players[0], gameState.players[2]], score: 0, collectedCards: [] },
-      { name: 'Équipe B', players: [gameState.players[1], gameState.players[3]], score: 0, collectedCards: [] }
+      { name: 'Équipe A', players: [gameState.players[0], gameState.players[2]], score: 0, collectedCards: [], hasDeclaredBelote: false },
+      { name: 'Équipe B', players: [gameState.players[1], gameState.players[3]], score: 0, collectedCards: [], hasDeclaredBelote: false }
     ];
   }
 
   for (const p of gameState.players) { p.hand = []; }
-  for (const t of gameState.teams) { t.collectedCards = []; }
+  for (const t of gameState.teams) {
+    t.collectedCards = [];
+    t.hasDeclaredBelote = false;
+  }
   
   for (let i = 0; i < 5; i++) {
     for (const p of gameState.players) { p.hand.push(deck.pop()!); }
@@ -62,25 +62,41 @@ function startNewHand() {
   gameState.biddingCard = biddingCard;
   gameState.deck = deck;
   gameState.trumpSuit = undefined;
-  gameState.takerId = undefined;
+  gameState.takerTeamName = undefined;
+  gameState.beloteHolderId = undefined;
   gameState.currentPlayerTurn = gameState.players[0].id;
   gameState.currentTrick = [];
+  gameState.roundPoints = undefined;
   updateAndBroadcastGameState();
 }
 
 io.on('connection', (socket) => {
-  console.log(`Un joueur s'est connecté : ${socket.id}`);
-
+  
   socket.on('joinGame', (playerName: string) => {
-    if (gameState.players.length >= 4) return;
-    
-    // On affiche le message uniquement quand un VRAI joueur rejoint
-    console.log(`Le joueur ${playerName} (${socket.id}) a rejoint la partie.`);
+    const disconnectedPlayer = gameState.players.find(p => p.name === playerName && !p.isConnected);
 
-    const newPlayer: Player = { id: socket.id, name: playerName, hand: [] };
-    gameState.players.push(newPlayer);
-    updateAndBroadcastGameState();
-    if (gameState.players.length === 4) startNewHand();
+    if (disconnectedPlayer) {
+      console.log(`Le joueur ${playerName} se reconnecte.`);
+      const oldSocketId = disconnectedPlayer.id;
+      disconnectedPlayer.isConnected = true;
+      disconnectedPlayer.id = socket.id;
+      
+      if (gameState.currentPlayerTurn === oldSocketId) {
+        gameState.currentPlayerTurn = socket.id;
+      }
+
+      updateAndBroadcastGameState();
+
+    } else if (gameState.players.length < 4 && !gameState.players.some(p => p.name === playerName)) {
+      console.log(`Le joueur ${playerName} (${socket.id}) a rejoint la partie.`);
+      const newPlayer: Player = { id: socket.id, name: playerName, hand: [], isConnected: true };
+      gameState.players.push(newPlayer);
+      if (gameState.players.length === 4) {
+        startNewHand();
+      } else {
+        updateAndBroadcastGameState();
+      }
+    }
   });
   
   socket.on('playerBid', (choice: 'take' | 'pass' | Suit) => {
@@ -89,9 +105,21 @@ io.on('connection', (socket) => {
     const isTakeAction = choice !== 'pass';
 
     if (isTakeAction) {
-      gameState.takerId = taker.id;
+      const takerTeam = gameState.teams.find(t => t.players.some(p => p.id === taker.id))!;
+      gameState.takerTeamName = takerTeam.name;
       gameState.trumpSuit = choice === 'take' ? gameState.biddingCard!.suit : choice as Suit;
       taker.hand.push(gameState.biddingCard!);
+      
+      const trump = gameState.trumpSuit;
+      for (const p of gameState.players) {
+        const hasKing = p.hand.some(c => c.rank === 'Roi' && c.suit === trump);
+        const hasQueen = p.hand.some(c => c.rank === 'Dame' && c.suit === trump);
+        if (hasKing && hasQueen) {
+          gameState.beloteHolderId = p.id;
+          console.log(`Le joueur ${p.name} a la belote.`);
+          break;
+        }
+      }
       
       for (const p of gameState.players) {
         const cardsToDeal = (p.id === taker.id) ? 2 : 3;
@@ -118,6 +146,17 @@ io.on('connection', (socket) => {
       }
       updateAndBroadcastGameState();
     }
+  });
+
+  socket.on('declareBelote', () => {
+      if (socket.id === gameState.beloteHolderId) {
+          const playerTeam = gameState.teams.find(t => t.players.some(p => p.id === socket.id));
+          if (playerTeam && !playerTeam.hasDeclaredBelote) {
+              playerTeam.hasDeclaredBelote = true;
+              console.log(`L'équipe ${playerTeam.name} a annoncé la Belote.`);
+              updateAndBroadcastGameState();
+          }
+      }
   });
 
   socket.on('playCard', (cardToPlay: Card) => {
@@ -148,9 +187,23 @@ io.on('connection', (socket) => {
         const isHandOver = winnerPlayer.hand.length === 0;
         if (isHandOver) {
           console.log("Manche terminée !");
-          const takerTeam = gameState.teams.find(t => t.players.some(p => p.id === gameState.takerId))!;
-          calculateScores(gameState.teams, takerTeam.name, winningTeam.name, gameState.trumpSuit!);
-          gameState.phase = 'end';
+          const defendingTeam = gameState.teams.find(t => t.name !== gameState.takerTeamName)!;
+          const isCapot = defendingTeam.collectedCards.length === 0;
+          
+          const roundScores = calculateRoundScores(gameState.teams, gameState.takerTeamName!, winningTeam.name, gameState.trumpSuit!, isCapot);
+          gameState.roundPoints = roundScores;
+
+          for (const team of gameState.teams) {
+            team.score += roundScores[team.name] || 0;
+          }
+
+          const gameWinner = gameState.teams.find(t => t.score >= WINNING_SCORE);
+          if (gameWinner) {
+            gameState.phase = 'game_over';
+            console.log(`Partie terminée ! Vainqueur : ${gameWinner.name}`);
+          } else {
+            gameState.phase = 'end';
+          }
         } else {
           gameState.currentTrick = [];
           gameState.currentPlayerTurn = winnerInfo.playerId;
@@ -166,11 +219,34 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('newGame', () => {
+    if (gameState.players[0]?.id === socket.id) {
+      console.log("Nouvelle partie demandée.");
+      gameState = { phase: 'waiting', players: [], teams: [], deck: [], currentTrick: [] };
+      biddingPasses = 0;
+      io.emit('gameStateUpdate', gameState);
+    }
+  });
+
   socket.on('disconnect', () => {
-    // ...
+    const player = gameState.players.find(p => p.id === socket.id);
+    if (player) {
+      console.log(`Le joueur ${player.name} s'est déconnecté.`);
+      player.isConnected = false;
+      updateAndBroadcastGameState();
+      
+      const allDisconnected = gameState.players.every(p => !p.isConnected);
+      if (gameState.players.length === 4 && allDisconnected) {
+          console.log("Tous les joueurs sont déconnectés. Réinitialisation de la partie.");
+          gameState = { phase: 'waiting', players: [], teams: [], deck: [], currentTrick: [] };
+          biddingPasses = 0;
+      }
+    } else {
+        // C'était une connexion technique ou un onglet non identifié, on ne fait rien.
+    }
   });
 });
 
-httpServer.listen(PORT, () => {
+httpServer.listen(PORT, '0.0.0.0', () => {
   console.log(`Le serveur de jeu écoute sur le port ${PORT}`);
 });

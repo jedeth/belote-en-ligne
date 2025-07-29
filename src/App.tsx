@@ -4,24 +4,39 @@ import { useState, useEffect } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { GameState, Suit, Card } from './types/belote.ts';
 
-const SERVER_URL = `http://${window.location.hostname}:3000`;
-const socket: Socket = io(SERVER_URL);
+const socket: Socket = io(`http://${window.location.hostname}:3000`);
 const SUITS: Suit[] = ['Pique', 'Coeur', 'Carreau', 'Trefle'];
 
 function App() {
   const [gameState, setGameState] = useState<GameState | null>(null);
-  const [playerName, setPlayerName] = useState('');
+  const [playerName, setPlayerName] = useState(localStorage.getItem('belotePlayerName') || '');
 
   useEffect(() => {
+    socket.on('connect', () => {
+      console.log('Connecté au serveur !');
+      const storedName = localStorage.getItem('belotePlayerName');
+      if (storedName) {
+        socket.emit('joinGame', storedName);
+      }
+    });
+
     socket.on('gameStateUpdate', (newState: GameState) => {
       setGameState(newState);
     });
-    return () => { socket.off('gameStateUpdate'); };
+
+    return () => {
+      socket.off('connect');
+      socket.off('gameStateUpdate');
+    };
   }, []);
 
   const handleJoinGame = (e: React.FormEvent) => {
     e.preventDefault();
-    if (playerName.trim()) socket.emit('joinGame', playerName);
+    const nameToJoin = playerName.trim();
+    if (nameToJoin) {
+      localStorage.setItem('belotePlayerName', nameToJoin);
+      socket.emit('joinGame', nameToJoin);
+    }
   };
 
   const handleBid = (choice: 'take' | 'pass' | Suit) => {
@@ -38,12 +53,24 @@ function App() {
     socket.emit('nextHand');
   };
 
+  const handleNewGame = () => {
+    socket.emit('newGame');
+  };
+  
+  const handleDeclareBelote = () => {
+    socket.emit('declareBelote');
+  };
+
   const me = gameState?.players.find(p => p.id === socket.id);
 
+  // Si on n'est pas encore dans la partie, ou si on est marqué comme déconnecté
   if (!me) {
     const isGameFull = (gameState?.players?.length ?? 0) === 4;
+    const isNameTaken = gameState?.players.some(p => p.name === playerName.trim() && p.isConnected);
+    const canReconnect = gameState?.players.some(p => p.name === playerName.trim() && !p.isConnected);
+
     return (
-      <div>
+      <div style={{ padding: '20px' }}>
         <h1>Rejoindre la partie de Belote</h1>
         <form onSubmit={handleJoinGame}>
           <input
@@ -51,31 +78,48 @@ function App() {
             value={playerName}
             onChange={(e) => setPlayerName(e.target.value)}
             placeholder="Entrez votre nom"
-            disabled={isGameFull}
           />
-          <button type="submit" disabled={isGameFull}>Rejoindre</button>
-          {isGameFull && <p>La partie est pleine.</p>}
+          <button type="submit" disabled={isNameTaken && !canReconnect}>
+            {canReconnect ? 'Se Reconnecter' : 'Rejoindre'}
+          </button>
+          {isGameFull && !canReconnect && <p>La partie est pleine.</p>}
+          {isNameTaken && !canReconnect && <p style={{color: 'red'}}>Ce nom est déjà pris par un joueur actif.</p>}
         </form>
       </div>
     );
   }
 
+  const isMyTurn = gameState?.currentPlayerTurn === socket.id;
+  const iHaveBelote = gameState?.beloteHolderId === socket.id;
+  const myTeam = gameState?.teams.find(t => t.players.some(p => p.id === socket.id));
+  const hasMyTeamDeclaredBelote = myTeam?.hasDeclaredBelote || false;
+
   return (
-    <div>
+    <div style={{ padding: '20px' }}>
       <h1>Partie de Belote - Phase: {gameState?.phase}</h1>
       <h2>Bonjour, {me.name} !</h2>
 
       {gameState?.teams.map(team => (
-        <div key={team.name} style={{float: 'right', marginLeft: '20px', border: '1px solid grey', padding: '5px'}}>
-          <strong>{team.name}</strong>: {team.score} points
+        <div key={team.name} style={{float: 'right', marginLeft: '20px', border: '1px solid grey', padding: '5px', textAlign: 'center'}}>
+          <strong>{team.name}</strong><br/>{team.score} points
+          {team.hasDeclaredBelote && <p style={{color: 'green', margin: 0, fontWeight: 'bold'}}>Belote !</p>}
         </div>
       ))}
 
-      {gameState && (gameState.phase !== 'waiting' && gameState.phase !== 'end') && (
-        <div style={{ margin: '20px 0', padding: '10px', border: '2px solid blue', clear: 'both' }}>
+      <div style={{ margin: '20px 0', clear: 'both' }}>
+          <h3>Joueurs :</h3>
+          {gameState?.players.map(p => (
+              <span key={p.name} style={{ marginRight: '15px', fontWeight: p.id === gameState.currentPlayerTurn ? 'bold' : 'normal', color: p.isConnected ? 'black' : 'grey' }}>
+                  {p.name} {p.isConnected ? '✔️' : '❌'}
+              </span>
+          ))}
+      </div>
+
+      {gameState && (gameState.phase !== 'waiting' && gameState.phase !== 'end' && gameState.phase !== 'game_over') && (
+        <div style={{ margin: '20px 0', padding: '10px', border: '2px solid blue' }}>
           <h3>Infos de la partie</h3>
           {gameState.phase === 'bidding' && <p>Carte retournée: {gameState.biddingCard?.rank} de {gameState.biddingCard?.suit}</p>}
-          {gameState.phase === 'playing' && <p>Atout: <strong>{gameState.trumpSuit}</strong></p>}
+          {gameState.phase === 'playing' && <p>Atout: <strong>{gameState.trumpSuit}</strong> | Preneur: <strong>{gameState.takerTeamName}</strong></p>}
           <p>Au tour de: <strong>{gameState.players.find(p => p.id === gameState.currentPlayerTurn)?.name}</strong></p>
         </div>
       )}
@@ -111,14 +155,14 @@ function App() {
          <div style={{ margin: '20px 0', padding: '10px', border: '2px solid green', minHeight: '120px' }}>
           <h3>Tapis de Jeu (Pli en cours)</h3>
           <div style={{ display: 'flex', gap: '10px' }}>
-            {gameState.currentTrick.map(({playerId, card}, index) => (
-              <div key={index} style={{textAlign: 'center'}}>
-                <div style={{ border: '1px solid black', padding: '10px', width: '80px' }}>
-                  {card.rank} de {card.suit}
-                </div>
-                <span>{gameState.players.find(p => p.id === playerId)?.name}</span>
+            {gameState.currentTrick.map(({playerId, card}, index) => {
+              const player = gameState.players.find(p => p.id === playerId);
+              return (
+              <div key={index} style={{textAlign: 'center', border: '1px solid black', padding: '10px'}}>
+                <p style={{margin: 0, fontWeight: 'bold'}}>{card.rank} de {card.suit}</p>
+                <span>{player?.name} {!player?.isConnected && '(déconnecté)'}</span>
               </div>
-            ))}
+            )})}
           </div>
         </div>
       )}
@@ -129,7 +173,7 @@ function App() {
           {gameState.teams.map(team => (
             <div key={team.name}>
               <h4>{team.name} (Score Total: {team.score})</h4>
-              <p>Cartes ramassées : {team.collectedCards.map(c => `${c.rank} ${c.suit}`).join(', ')}</p>
+              <p>Points de la manche: {gameState.roundPoints?.[team.name] ?? 0}</p>
             </div>
           ))}
           {gameState.players[0].id === socket.id && (
@@ -138,17 +182,41 @@ function App() {
         </div>
       )}
 
-      <h3>Votre main ({me.hand.length} cartes) :</h3>
+      {gameState?.phase === 'game_over' && (
+        <div style={{ margin: '20px 0', padding: '10px', border: '2px solid black', backgroundColor: 'gold' }}>
+          <h2>Partie Terminée !</h2>
+          <h3>Vainqueur : {gameState.teams.find(t => t.score >= WINNING_SCORE)?.name}</h3>
+          {gameState.teams.map(team => (
+            <div key={team.name}>
+              <h4>{team.name} - Score Final : {team.score}</h4>
+            </div>
+          ))}
+          {gameState.players[0].id === socket.id && (
+            <button onClick={handleNewGame}>Nouvelle Partie</button>
+          )}
+        </div>
+      )}
+      
+      {me.hand.length > 0 && <h3>Votre main ({me.hand.length} cartes) :</h3>}
+
+      {iHaveBelote && !hasMyTeamDeclaredBelote && gameState?.phase === 'playing' && (
+        <div style={{ margin: '10px 0' }}>
+          <button onClick={handleDeclareBelote} style={{backgroundColor: 'gold', padding: '10px', border: '2px solid black', cursor: 'pointer'}}>Annoncer BELOTE</button>
+        </div>
+      )}
+
       <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
         {me.hand.map((card, index) => {
-          const isMyTurn = gameState?.currentPlayerTurn === socket.id;
           return (
             <div 
               key={index} 
               onClick={() => handlePlayCard(card)}
               style={{ 
                 border: '1px solid black', 
-                padding: '10px',
+                padding: '20px 10px',
+                minWidth: '60px',
+                textAlign: 'center',
+                borderRadius: '5px',
                 cursor: isMyTurn ? 'pointer' : 'not-allowed',
                 backgroundColor: isMyTurn ? '#90ee90' : 'white'
               }}
