@@ -58,30 +58,55 @@ export function determineTrickWinner(trick: PlayedCard[], trumpSuit: Suit): Play
   return winningCard;
 }
 
-// ### MODIFICATION ICI : On renomme la fonction ###
-export function calculateRoundScores(teams: Team[], takerTeamName: string, dixDeDerWinnerTeamName: string, trumpSuit: Suit) {
+// ### MODIFICATION PRINCIPALE ICI ###
+export function calculateRoundScores(
+    teams: Team[], 
+    takerTeamName: string, 
+    dixDeDerWinnerTeamName: string, 
+    trumpSuit: Suit,
+    isCapot: boolean
+): { [teamName: string]: number } {
+  
   const takerTeam = teams.find(t => t.name === takerTeamName)!;
   const defendingTeam = teams.find(t => t.name !== takerTeamName)!;
-
-  let takerPoints = 0;
-  for (const card of takerTeam.collectedCards) {
-    takerPoints += card.suit === trumpSuit ? CARD_POINTS_TRUMP[card.rank] : CARD_POINTS_NORMAL[card.rank];
-  }
   
-  let defenderPoints = 0;
-  for (const card of defendingTeam.collectedCards) {
-    defenderPoints += card.suit === trumpSuit ? CARD_POINTS_TRUMP[card.rank] : CARD_POINTS_NORMAL[card.rank];
-  }
-  
-  if (takerTeam.name === dixDeDerWinnerTeamName) takerPoints += 10;
-  else defenderPoints += 10;
+  let finalTakerScore = 0;
+  let finalDefenderScore = 0;
 
-  if (takerPoints > defenderPoints) {
-    console.log(`Contrat réussi: ${takerPoints} à ${defenderPoints}`);
-    takerTeam.score += takerPoints;
-    defendingTeam.score += defenderPoints;
+  if (isCapot) {
+      console.log(`Capot réussi par l'équipe ${takerTeamName}`);
+      finalTakerScore = 252;
   } else {
-    console.log(`Contrat chuté: ${takerPoints} à ${defenderPoints}`);
-    defendingTeam.score += 162;
+    let takerCardPoints = 0;
+    for (const card of takerTeam.collectedCards) {
+      takerCardPoints += card.suit === trumpSuit ? CARD_POINTS_TRUMP[card.rank] : CARD_POINTS_NORMAL[card.rank];
+    }
+    let defenderCardPoints = 0;
+    for (const card of defendingTeam.collectedCards) {
+      defenderCardPoints += card.suit === trumpSuit ? CARD_POINTS_TRUMP[card.rank] : CARD_POINTS_NORMAL[card.rank];
+    }
+    
+    if (takerTeam.name === dixDeDerWinnerTeamName) takerCardPoints += 10;
+    else defenderCardPoints += 10;
+
+    if (takerCardPoints >= 82 && takerCardPoints > defenderCardPoints) {
+      console.log(`Contrat réussi: ${takerCardPoints} à ${defenderCardPoints}`);
+      finalTakerScore = takerCardPoints;
+      finalDefenderScore = defenderCardPoints;
+    } else {
+      console.log(`Contrat chuté: ${takerCardPoints} à ${defenderCardPoints}`);
+      finalTakerScore = 0;
+      finalDefenderScore = 162;
+    }
   }
+
+  // On ajoute les points de la belote après le calcul du contrat
+  if (takerTeam.hasDeclaredBelote) finalTakerScore += 20;
+  if (defendingTeam.hasDeclaredBelote) finalDefenderScore += 20;
+  
+  // On retourne un objet avec les scores de la manche
+  return {
+      [takerTeam.name]: finalTakerScore,
+      [defendingTeam.name]: finalDefenderScore,
+  };
 }
