@@ -102,9 +102,15 @@ function App() {
       <h2>Bonjour, {me.name} !</h2>
 
       {gameState?.teams.map(team => (
-        <div key={team.name} style={{float: 'right', marginLeft: '20px', border: '1px solid grey', padding: '5px', textAlign: 'center'}}>
+        <div key={team.name} style={{float: 'right', marginLeft: '20px', border: '1px solid grey', padding: '10px', minWidth: '150px', textAlign: 'center'}}>
           <strong>{team.name}</strong><br/>{team.score} points
-          {team.hasDeclaredBelote && <p style={{color: 'green', margin: 0, fontWeight: 'bold'}}>Belote !</p>}
+          
+          {/* LIGNES AJOUTÉES CI-DESSOUS */}
+          <p style={{ margin: '8px 0 0 0', fontSize: '0.8em', fontStyle: 'italic' }}>
+            {team.players.map(p => p.name).join(' & ')}
+          </p>
+
+          {team.hasDeclaredBelote && <p style={{color: 'green', margin: '5px 0 0 0', fontWeight: 'bold'}}>Belote !</p>}
         </div>
       ))}
 
@@ -179,7 +185,17 @@ function App() {
           <h3>Fin de la manche</h3>
           {gameState.teams.map(team => (
             <div key={team.name}>
-              <h4>{team.name} (Score Total: {team.score})</h4>
+              <h4>
+                {team.name} (Score Total: {team.score})
+                
+                
+                {team.name === gameState.takerTeamName && (
+                  <>
+                    {gameState.contractResult === 'succeeded' && <span style={{color: 'green', marginLeft: '10px'}}> (Contrat réussi)</span>}
+                    {gameState.contractResult === 'failed' && <span style={{color: 'red', marginLeft: '10px'}}> (Contrat chuté)</span>}
+                  </>
+                )}
+              </h4>
               <p>Points de la manche: {gameState.roundPoints?.[team.name] ?? 0}</p>
             </div>
           ))}

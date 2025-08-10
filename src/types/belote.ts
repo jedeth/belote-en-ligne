@@ -41,6 +41,7 @@ export interface GameState {
   trumpSuit?: Suit;
   currentTrick: PlayedCard[];
   roundPoints?: { [teamName: string]: number };
+  contractResult?: 'succeeded' | 'failed';
   beloteHolderId?: string;
 }
 

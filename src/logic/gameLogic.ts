@@ -66,17 +66,19 @@ export function calculateRoundScores(
     dixDeDerWinnerTeamName: string, 
     trumpSuit: Suit,
     isCapot: boolean
-): { [teamName: string]: number } {
+): { scores: { [teamName: string]: number }, result: 'succeeded' | 'failed' } { // <--- Changement du type de retour
   
   const takerTeam = teams.find(t => t.name === takerTeamName)!;
   const defendingTeam = teams.find(t => t.name !== takerTeamName)!;
   
   let finalTakerScore = 0;
   let finalDefenderScore = 0;
+  let result: 'succeeded' | 'failed'; // <--- Nouvelle variable
 
   if (isCapot) {
       console.log(`Capot réussi par l'équipe ${takerTeamName}`);
       finalTakerScore = 252;
+      result = 'succeeded';
   } else {
     let takerCardPoints = 0;
     for (const card of takerTeam.collectedCards) {
@@ -90,14 +92,17 @@ export function calculateRoundScores(
     if (takerTeam.name === dixDeDerWinnerTeamName) takerCardPoints += 10;
     else defenderCardPoints += 10;
 
+    // On détermine si le contrat est réussi
     if (takerCardPoints >= 82 && takerCardPoints > defenderCardPoints) {
       console.log(`Contrat réussi: ${takerCardPoints} à ${defenderCardPoints}`);
       finalTakerScore = takerCardPoints;
       finalDefenderScore = defenderCardPoints;
+      result = 'succeeded'; // <--- On stocke le résultat
     } else {
       console.log(`Contrat chuté: ${takerCardPoints} à ${defenderCardPoints}`);
       finalTakerScore = 0;
       finalDefenderScore = 162;
+      result = 'failed'; // <--- On stocke le résultat
     }
   }
 
@@ -105,9 +110,12 @@ export function calculateRoundScores(
   if (takerTeam.hasDeclaredBelote) finalTakerScore += 20;
   if (defendingTeam.hasDeclaredBelote) finalDefenderScore += 20;
   
-  // On retourne un objet avec les scores de la manche
+  // On retourne un objet plus complet
   return {
-      [takerTeam.name]: finalTakerScore,
-      [defendingTeam.name]: finalDefenderScore,
+      scores: {
+        [takerTeam.name]: finalTakerScore,
+        [defendingTeam.name]: finalDefenderScore,
+      },
+      result: result
   };
 }

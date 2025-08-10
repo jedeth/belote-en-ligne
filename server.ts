@@ -190,9 +190,10 @@ io.on('connection', (socket) => {
           console.log("Manche terminée !");
           const defendingTeam = gameState.teams.find((t: Team) => t.name !== gameState.takerTeamName)!;
           const isCapot = defendingTeam.collectedCards.length === 0;
-          
+          const roundOutcome = calculateRoundScores(gameState.teams, gameState.takerTeamName!, winningTeam.name, gameState.trumpSuit!, isCapot);
           const roundScores = calculateRoundScores(gameState.teams, gameState.takerTeamName!, winningTeam.name, gameState.trumpSuit!, isCapot);
           gameState.roundPoints = roundScores;
+          gameState.contractResult = roundOutcome.result;
 
           for (const team of gameState.teams) {
             team.score += roundScores[team.name] || 0;
