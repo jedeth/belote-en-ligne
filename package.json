@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "dev:server": "tsx watch server.ts",
-    "build": "vite build",
+    "build": "tsc --project tsconfig.server.json && vite build",
     "start": "node dist/server.js",
     "lint": "eslint .",
     "preview": "vite preview"
