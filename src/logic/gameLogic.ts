@@ -119,3 +119,54 @@ export function calculateRoundScores(
       result: result
   };
 }
+export function createFixedHandForBeloteTest(): { hands: Card[][], biddingCard: Card, deck: Card[] } {
+  // On s'assure que le joueur 1 a la belote à Coeur
+  const player1Hand: Card[] = [
+    { suit: 'Coeur', rank: 'Roi' },
+    { suit: 'Coeur', rank: 'Dame' },
+    { suit: 'Coeur', rank: 'As' },
+    { suit: 'Pique', rank: '10' },
+    { suit: 'Carreau', rank: 'As' },
+  ];
+
+  const player2Hand: Card[] = [
+    { suit: 'Trefle', rank: 'As' },
+    { suit: 'Trefle', rank: '10' },
+    { suit: 'Pique', rank: 'As' },
+    { suit: 'Coeur', rank: '7' },
+    { suit: 'Carreau', rank: '10' },
+  ];
+
+  const player3Hand: Card[] = [
+    { suit: 'Carreau', rank: 'Roi' },
+    { suit: 'Carreau', rank: 'Dame' },
+    { suit: 'Pique', rank: 'Roi' },
+    { suit: 'Trefle', rank: 'Roi' },
+    { suit: 'Coeur', rank: '8' },
+  ];
+  
+  const player4Hand: Card[] = [
+    { suit: 'Pique', rank: 'Dame' },
+    { suit: 'Pique', rank: 'Valet' },
+    { suit: 'Trefle', rank: 'Dame' },
+    { suit: 'Trefle', rank: 'Valet' },
+    { suit: 'Coeur', rank: '9' },
+  ];
+
+  const hands = [player1Hand, player2Hand, player3Hand, player4Hand];
+
+  // La carte retournée sera un Coeur pour encourager la prise
+  const biddingCard: Card = { suit: 'Coeur', rank: '10' };
+
+  // Le reste du paquet (peu importe pour ce test)
+  const deck: Card[] = [
+    { suit: 'Carreau', rank: '9' }, { suit: 'Carreau', rank: '8' }, { suit: 'Carreau', rank: '7' },
+    { suit: 'Pique', rank: '9' }, { suit: 'Pique', rank: '8' }, { suit: 'Pique', rank: '7' },
+    { suit: 'Trefle', rank: '9' }, { suit: 'Trefle', rank: '8' }, { suit: 'Trefle', rank: '7' },
+    { suit: 'Coeur', rank: 'Valet' },
+    { suit: 'Carreau', rank: 'Valet' },
+    { suit: 'Trefle', rank: 'As' },
+  ];
+
+  return { hands, biddingCard, deck };
+}

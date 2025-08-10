@@ -3,7 +3,8 @@
 import express from 'express';
 import http from 'http';
 import { Server } from 'socket.io';
-import { createDeck, shuffleDeck, determineTrickWinner, calculateRoundScores } from './src/logic/gameLogic.js';
+import { createDeck, shuffleDeck, determineTrickWinner, calculateRoundScores, createFixedHandForBeloteTest } from './src/logic/gameLogic.js';
+
 import { type Player, type GameState, type Suit, type Card, type Team, type PlayedCard } from './src/types/belote.js';
 
 const PORT = parseInt(process.env.PORT || '3000', 10);
@@ -34,30 +35,43 @@ function updateAndBroadcastGameState() {
 function startNewHand() {
   console.log("Début d'une nouvelle manche.");
   biddingPasses = 0;
-  const deck = shuffleDeck(createDeck());
+  
+  // Activez ou désactivez le mode test ici
+  const isTestMode = true; 
+
+  if (isTestMode) {
+    console.log("ATTENTION : Mode test de distribution activé !");
+    const testData = createFixedHandForBeloteTest();
+    gameState.players.forEach((player, index) => {
+      player.hand = testData.hands[index];
+    });
+    gameState.deck = testData.deck;
+    gameState.biddingCard = testData.biddingCard;
+
+  } else {
+    // Comportement normal et aléatoire
+    const deck = shuffleDeck(createDeck());
+    for (const p of gameState.players) { p.hand = []; }
+    for (let i = 0; i < 5; i++) {
+      for (const p of gameState.players) { p.hand.push(deck.pop()!); }
+    }
+    gameState.biddingCard = deck.pop()!;
+    gameState.deck = deck;
+  }
   
   if (gameState.teams.length === 0) {
     gameState.teams = [
-      { name: 'Équipe A', players: [gameState.players[0], gameState.players[2]], score: 0, collectedCards: [], hasDeclaredBelote: false },
-      { name: 'Équipe B', players: [gameState.players[1], gameState.players[3]], score: 0, collectedCards: [], hasDeclaredBelote: false }
+      { name: 'Équipe A', players: [gameState.players[0], gameState.players[2]], score: 0, collectedCards: [], beloteState: 'none' },
+      { name: 'Équipe B', players: [gameState.players[1], gameState.players[3]], score: 0, collectedCards: [], beloteState: 'none' }
     ];
   }
 
-  for (const p of gameState.players) { p.hand = []; }
   for (const t of gameState.teams) {
     t.collectedCards = [];
-    t.hasDeclaredBelote = false;
+    t.beloteState = 'none';
   }
-  
-  for (let i = 0; i < 5; i++) {
-    for (const p of gameState.players) { p.hand.push(deck.pop()!); }
-  }
-
-  const biddingCard = deck.pop()!;
   
   gameState.phase = 'bidding';
-  gameState.biddingCard = biddingCard;
-  gameState.deck = deck;
   gameState.trumpSuit = undefined;
   gameState.takerTeamName = undefined;
   gameState.beloteHolderId = undefined;
@@ -67,7 +81,6 @@ function startNewHand() {
   gameState.contractResult = undefined;
   updateAndBroadcastGameState();
 }
-
 io.on('connection', (socket) => {
   
   socket.on('joinGame', (playerName: string) => {
@@ -144,16 +157,33 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('declareBelote', () => {
-      if (socket.id === gameState.beloteHolderId) {
-          const playerTeam = gameState.teams.find((t: Team) => t.players.some((p: Player) => p.id === socket.id));
-          if (playerTeam && !playerTeam.hasDeclaredBelote) {
-              playerTeam.hasDeclaredBelote = true;
-              console.log(`L'équipe ${playerTeam.name} a annoncé la Belote.`);
-              updateAndBroadcastGameState();
-          }
-      }
+socket.on('declareBelote', () => {
+  if (socket.id !== gameState.beloteHolderId) return;
+
+  const playerTeam = gameState.teams.find((t: Team) => t.players.some((p: Player) => p.id === socket.id));
+  if (!playerTeam || playerTeam.beloteState === 'rebelote') return;
+
+  // ############# DÉBUT DE LA CORRECTION #############
+
+  // On détermine le prochain état de l'annonce
+  const nextBeloteState = playerTeam.beloteState === 'none' ? 'belote' : 'rebelote';
+
+  // On crée un nouveau tableau d'équipes avec la modification
+  gameState.teams = gameState.teams.map((team: Team) => {
+    if (team.name === playerTeam.name) {
+      // Pour l'équipe qui déclare, on retourne un nouvel objet avec l'état mis à jour
+      console.log(`L'équipe ${team.name} a annoncé : ${nextBeloteState}.`);
+      return { ...team, beloteState: nextBeloteState };
+    }
+    // Pour l'autre équipe, on retourne l'objet sans changement
+    return team;
   });
+
+  // On envoie la mise à jour à tout le monde
+  updateAndBroadcastGameState();
+
+  // ############## FIN DE LA CORRECTION ###############
+});
 
   socket.on('playCard', (cardToPlay: Card) => {
     if (gameState.phase !== 'playing' || socket.id !== gameState.currentPlayerTurn) return;
