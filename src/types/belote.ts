@@ -25,7 +25,7 @@ export interface Team {
     players: Player[];
     score: number;
     collectedCards: Card[];
-    hasDeclaredBelote: boolean;
+    beloteState: 'none' | 'belote' | 'rebelote';
 }
 
 export type GamePhase = 'waiting' | 'bidding' | 'bidding_round_2' | 'playing' | 'end' | 'game_over';

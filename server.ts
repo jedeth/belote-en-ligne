@@ -38,15 +38,15 @@ function startNewHand() {
   
   if (gameState.teams.length === 0) {
     gameState.teams = [
-      { name: 'Équipe A', players: [gameState.players[0], gameState.players[2]], score: 0, collectedCards: [], hasDeclaredBelote: false },
-      { name: 'Équipe B', players: [gameState.players[1], gameState.players[3]], score: 0, collectedCards: [], hasDeclaredBelote: false }
+      { name: 'Équipe A', players: [gameState.players[0], gameState.players[2]], score: 0, collectedCards: [], beloteState: 'none' }, // <-- Modifié ici
+      { name: 'Équipe B', players: [gameState.players[1], gameState.players[3]], score: 0, collectedCards: [], beloteState: 'none' }  // <-- Et ici
     ];
   }
 
   for (const p of gameState.players) { p.hand = []; }
   for (const t of gameState.teams) {
     t.collectedCards = [];
-    t.hasDeclaredBelote = false;
+    t.beloteState = 'none'; // <-- Ligne modifiée
   }
   
   for (let i = 0; i < 5; i++) {
@@ -95,66 +95,61 @@ io.on('connection', (socket) => {
     }
   });
   
-  socket.on('playerBid', (choice: 'take' | 'pass' | Suit) => {
-    if (socket.id !== gameState.currentPlayerTurn) return;
-    const taker = gameState.players.find((p: Player) => p.id === socket.id)!;
-    const isTakeAction = choice !== 'pass';
+socket.on('playerBid', (choice: 'take' | 'pass' | Suit) => {
+  if (socket.id !== gameState.currentPlayerTurn) return;
+  const taker = gameState.players.find((p: Player) => p.id === socket.id)!;
+  const isTakeAction = choice !== 'pass';
 
-    if (isTakeAction) {
-      const takerTeam = gameState.teams.find((t: Team) => t.players.some((p: Player) => p.id === taker.id))!;
-      gameState.takerTeamName = takerTeam.name;
-      gameState.trumpSuit = choice === 'take' ? gameState.biddingCard!.suit : choice as Suit;
-      taker.hand.push(gameState.biddingCard!);
-      
-      const trump = gameState.trumpSuit;
-      for (const p of gameState.players) {
-        const hasKing = p.hand.some((c: Card) => c.rank === 'Roi' && c.suit === trump);
-        const hasQueen = p.hand.some((c: Card) => c.rank === 'Dame' && c.suit === trump);
-        if (hasKing && hasQueen) {
-          gameState.beloteHolderId = p.id;
-          console.log(`Le joueur ${p.name} a la belote.`);
-          break;
-        }
-      }
-      
-      for (const p of gameState.players) {
-        const cardsToDeal = (p.id === taker.id) ? 2 : 3;
-        for (let i = 0; i < cardsToDeal; i++) {
-          if (gameState.deck.length > 0) p.hand.push(gameState.deck.pop()!);
-        }
-      }
-      
-      gameState.phase = 'playing';
-      gameState.currentPlayerTurn = gameState.players[0].id;
-      delete gameState.biddingCard;
-      updateAndBroadcastGameState();
-    } else {
-      biddingPasses++;
-      const currentPlayerIndex = gameState.players.findIndex((p: Player) => p.id === socket.id);
-      const nextPlayerIndex = (currentPlayerIndex + 1) % 4;
-      gameState.currentPlayerTurn = gameState.players[nextPlayerIndex].id;
+  if (isTakeAction) {
+    const takerTeam = gameState.teams.find((t: Team) => t.players.some((p: Player) => p.id === taker.id))!;
+    gameState.takerTeamName = takerTeam.name;
+    gameState.trumpSuit = choice === 'take' ? gameState.biddingCard!.suit : choice as Suit;
+    taker.hand.push(gameState.biddingCard!);
+    
+    // ############# DÉBUT DE LA CORRECTION #############
 
-      if (biddingPasses === 4 && gameState.phase === 'bidding') {
-        gameState.phase = 'bidding_round_2';
-      } else if (biddingPasses === 8 && gameState.phase === 'bidding_round_2') {
-        startNewHand();
-        return;
+    // 1. D'ABORD, on distribue les cartes restantes pour que tout le monde ait 8 cartes.
+    for (const p of gameState.players) {
+      const cardsToDeal = (p.id === taker.id) ? 2 : 3;
+      for (let i = 0; i < cardsToDeal; i++) {
+        if (gameState.deck.length > 0) p.hand.push(gameState.deck.pop()!);
       }
-      updateAndBroadcastGameState();
     }
-  });
 
-  socket.on('declareBelote', () => {
-      if (socket.id === gameState.beloteHolderId) {
-          const playerTeam = gameState.teams.find((t: Team) => t.players.some((p: Player) => p.id === socket.id));
-          if (playerTeam && !playerTeam.hasDeclaredBelote) {
-              playerTeam.hasDeclaredBelote = true;
-              console.log(`L'équipe ${playerTeam.name} a annoncé la Belote.`);
-              updateAndBroadcastGameState();
-          }
+    // 2. ENSUITE, on vérifie qui a la belote maintenant que les mains sont complètes.
+    const trump = gameState.trumpSuit;
+    for (const p of gameState.players) {
+      const hasKing = p.hand.some((c: Card) => c.rank === 'Roi' && c.suit === trump);
+      const hasQueen = p.hand.some((c: Card) => c.rank === 'Dame' && c.suit === trump);
+      if (hasKing && hasQueen) {
+        gameState.beloteHolderId = p.id;
+        console.log(`Le joueur ${p.name} a la belote.`);
+        break;
       }
-  });
+    }
+    
+    // ############## FIN DE LA CORRECTION ###############
+    
+    gameState.phase = 'playing';
+    gameState.currentPlayerTurn = gameState.players[0].id;
+    delete gameState.biddingCard;
+    updateAndBroadcastGameState();
+    
+  } else {
+    biddingPasses++;
+    const currentPlayerIndex = gameState.players.findIndex((p: Player) => p.id === socket.id);
+    const nextPlayerIndex = (currentPlayerIndex + 1) % 4;
+    gameState.currentPlayerTurn = gameState.players[nextPlayerIndex].id;
 
+    if (biddingPasses === 4 && gameState.phase === 'bidding') {
+      gameState.phase = 'bidding_round_2';
+    } else if (biddingPasses === 8 && gameState.phase === 'bidding_round_2') {
+      startNewHand();
+      return;
+    }
+    updateAndBroadcastGameState();
+  }
+});
   socket.on('playCard', (cardToPlay: Card) => {
     if (gameState.phase !== 'playing' || socket.id !== gameState.currentPlayerTurn) return;
     const player = gameState.players.find((p: Player) => p.id === socket.id);

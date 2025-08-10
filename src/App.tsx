@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { type GameState, type Suit, type Card, WINNING_SCORE } from './types/belote.ts';
+import { type GameState, type Suit, type Card, WINNING_SCORE } from './types/belote.js';
 import CardImage from './components/CardImage.tsx';
 
 const URL = import.meta.env.VITE_API_URL || `http://localhost:3000`;
@@ -94,25 +94,27 @@ function App() {
   const isMyTurn = gameState?.currentPlayerTurn === socket.id;
   const iHaveBelote = gameState?.beloteHolderId === socket.id;
   const myTeam = gameState?.teams.find(t => t.players.some(p => p.id === socket.id));
-  const hasMyTeamDeclaredBelote = myTeam?.hasDeclaredBelote || false;
 
   return (
     <div style={{ padding: '20px' }}>
       <h1>Partie de Belote - Phase: {gameState?.phase}</h1>
       <h2>Bonjour, {me.name} !</h2>
 
+      {/* ############# BLOC DE CORRECTION ############# */}
       {gameState?.teams.map(team => (
         <div key={team.name} style={{float: 'right', marginLeft: '20px', border: '1px solid grey', padding: '10px', minWidth: '150px', textAlign: 'center'}}>
           <strong>{team.name}</strong><br/>{team.score} points
           
-          {/* LIGNES AJOUTÉES CI-DESSOUS */}
           <p style={{ margin: '8px 0 0 0', fontSize: '0.8em', fontStyle: 'italic' }}>
             {team.players.map(p => p.name).join(' & ')}
           </p>
 
-          {team.hasDeclaredBelote && <p style={{color: 'green', margin: '5px 0 0 0', fontWeight: 'bold'}}>Belote !</p>}
+          {/* Logique d'affichage mise à jour pour utiliser beloteState */}
+          {team.beloteState === 'belote' && <p style={{color: 'gold', margin: '5px 0 0 0', fontWeight: 'bold'}}>Belote !</p>}
+          {team.beloteState === 'rebelote' && <p style={{color: 'green', margin: '5px 0 0 0', fontWeight: 'bold'}}>Belote et Rebelote !</p>}
         </div>
       ))}
+      {/* ############################################# */}
 
       <div style={{ margin: '20px 0', clear: 'both' }}>
           <h3>Joueurs :</h3>
@@ -222,9 +224,19 @@ function App() {
       
       {me.hand.length > 0 && <h3>Votre main ({me.hand.length} cartes) :</h3>}
 
-      {iHaveBelote && !hasMyTeamDeclaredBelote && gameState?.phase === 'playing' && (
+      {/* === BLOC DE DÉCLARATION MIS À JOUR === */}
+      {iHaveBelote && gameState?.phase === 'playing' && (
         <div style={{ margin: '10px 0' }}>
-          <button onClick={handleDeclareBelote} style={{backgroundColor: 'gold', padding: '10px', border: '2px solid black', cursor: 'pointer'}}>Annoncer BELOTE</button>
+          {myTeam?.beloteState === 'none' && (
+            <button onClick={handleDeclareBelote} style={{backgroundColor: 'gold', padding: '10px', border: '2px solid black', cursor: 'pointer'}}>
+              Annoncer BELOTE
+            </button>
+          )}
+          {myTeam?.beloteState === 'belote' && (
+            <button onClick={handleDeclareBelote} style={{backgroundColor: 'orange', padding: '10px', border: '2px solid black', cursor: 'pointer'}}>
+              Annoncer REBELOTE
+            </button>
+          )}
         </div>
       )}
 

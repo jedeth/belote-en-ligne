@@ -107,8 +107,8 @@ export function calculateRoundScores(
   }
 
   // On ajoute les points de la belote après le calcul du contrat
-  if (takerTeam.hasDeclaredBelote) finalTakerScore += 20;
-  if (defendingTeam.hasDeclaredBelote) finalDefenderScore += 20;
+  if (takerTeam.beloteState === 'rebelote') finalTakerScore += 20;     // <-- Ligne modifiée
+  if (defendingTeam.beloteState === 'rebelote') finalDefenderScore += 20; // <-- Ligne modifiée
   
   // On retourne un objet plus complet
   return {
