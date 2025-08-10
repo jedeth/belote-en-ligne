@@ -37,7 +37,7 @@ function startNewHand() {
   biddingPasses = 0;
   
   // Activez ou désactivez le mode test ici
-  const isTestMode = true; 
+  const isTestMode = false; 
 
   if (isTestMode) {
     console.log("ATTENTION : Mode test de distribution activé !");
