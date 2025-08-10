@@ -1,16 +1,11 @@
-// server.ts
+// server.ts - VERSION FINALE ET CORRIGÉE
 
 import express from 'express';
 import http from 'http';
 import { Server } from 'socket.io';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
-// Note: Assurez-vous que ces chemins d'importation sont corrects par rapport à votre structure de projet
 import { createDeck, shuffleDeck, determineTrickWinner, calculateRoundScores } from './src/logic/gameLogic.js';
 import { type Player, type GameState, type Suit, type Card, type Team, type PlayedCard } from './src/types/belote.js';
 
-// ✅ LIGNE IMPORTANTE : Utilise le port fourni par Render, ou 3000 sur votre machine locale.
 const PORT = parseInt(process.env.PORT || '3000', 10);
 const WINNING_SCORE = 1000;
 
@@ -41,12 +36,16 @@ function startNewHand() {
   biddingPasses = 0;
   const deck = shuffleDeck(createDeck());
   
-  if (!gameState.teams || gameState.teams.length === 0) {
+  // Réinitialisation des scores si c'est la toute première main
+  if (gameState.teams.length > 0 && gameState.teams.every((t: Team) => t.score === 0)) {
+     // C'est une nouvelle partie, on garde les équipes mais on ne fait rien
+  } else if (gameState.teams.length === 0) {
     gameState.teams = [
       { name: 'Équipe A', players: [gameState.players[0], gameState.players[2]], score: 0, collectedCards: [], hasDeclaredBelote: false },
       { name: 'Équipe B', players: [gameState.players[1], gameState.players[3]], score: 0, collectedCards: [], hasDeclaredBelote: false }
     ];
   }
+
 
   for (const p of gameState.players) { p.hand = []; }
   for (const t of gameState.teams) {
@@ -75,7 +74,7 @@ function startNewHand() {
 io.on('connection', (socket) => {
   
   socket.on('joinGame', (playerName: string) => {
-    const disconnectedPlayer = gameState.players.find(p => p.name === playerName && !p.isConnected);
+    const disconnectedPlayer = gameState.players.find((p: Player) => p.name === playerName && !p.isConnected);
 
     if (disconnectedPlayer) {
       console.log(`Le joueur ${playerName} se reconnecte.`);
@@ -89,7 +88,7 @@ io.on('connection', (socket) => {
 
       updateAndBroadcastGameState();
 
-    } else if (gameState.players.length < 4 && !gameState.players.some(p => p.name === playerName)) {
+    } else if (gameState.players.length < 4 && !gameState.players.some((p: Player) => p.name === playerName)) {
       console.log(`Le joueur ${playerName} (${socket.id}) a rejoint la partie.`);
       const newPlayer: Player = { id: socket.id, name: playerName, hand: [], isConnected: true };
       gameState.players.push(newPlayer);
@@ -103,19 +102,19 @@ io.on('connection', (socket) => {
   
   socket.on('playerBid', (choice: 'take' | 'pass' | Suit) => {
     if (socket.id !== gameState.currentPlayerTurn) return;
-    const taker = gameState.players.find(p => p.id === socket.id)!;
+    const taker = gameState.players.find((p: Player) => p.id === socket.id)!;
     const isTakeAction = choice !== 'pass';
 
     if (isTakeAction) {
-      const takerTeam = gameState.teams.find(t => t.players.some(p => p.id === taker.id))!;
+      const takerTeam = gameState.teams.find((t: Team) => t.players.some((p: Player) => p.id === taker.id))!;
       gameState.takerTeamName = takerTeam.name;
       gameState.trumpSuit = choice === 'take' ? gameState.biddingCard!.suit : choice as Suit;
       taker.hand.push(gameState.biddingCard!);
       
       const trump = gameState.trumpSuit;
       for (const p of gameState.players) {
-        const hasKing = p.hand.some(c => c.rank === 'Roi' && c.suit === trump);
-        const hasQueen = p.hand.some(c => c.rank === 'Dame' && c.suit === trump);
+        const hasKing = p.hand.some((c: Card) => c.rank === 'Roi' && c.suit === trump);
+        const hasQueen = p.hand.some((c: Card) => c.rank === 'Dame' && c.suit === trump);
         if (hasKing && hasQueen) {
           gameState.beloteHolderId = p.id;
           console.log(`Le joueur ${p.name} a la belote.`);
@@ -136,7 +135,7 @@ io.on('connection', (socket) => {
       updateAndBroadcastGameState();
     } else {
       biddingPasses++;
-      const currentPlayerIndex = gameState.players.findIndex(p => p.id === socket.id);
+      const currentPlayerIndex = gameState.players.findIndex((p: Player) => p.id === socket.id);
       const nextPlayerIndex = (currentPlayerIndex + 1) % 4;
       gameState.currentPlayerTurn = gameState.players[nextPlayerIndex].id;
 
@@ -152,7 +151,7 @@ io.on('connection', (socket) => {
 
   socket.on('declareBelote', () => {
       if (socket.id === gameState.beloteHolderId) {
-          const playerTeam = gameState.teams.find(t => t.players.some(p => p.id === socket.id));
+          const playerTeam = gameState.teams.find((t: Team) => t.players.some((p: Player) => p.id === socket.id));
           if (playerTeam && !playerTeam.hasDeclaredBelote) {
               playerTeam.hasDeclaredBelote = true;
               console.log(`L'équipe ${playerTeam.name} a annoncé la Belote.`);
@@ -163,17 +162,17 @@ io.on('connection', (socket) => {
 
   socket.on('playCard', (cardToPlay: Card) => {
     if (gameState.phase !== 'playing' || socket.id !== gameState.currentPlayerTurn) return;
-    const player = gameState.players.find(p => p.id === socket.id);
+    const player = gameState.players.find((p: Player) => p.id === socket.id);
     if (!player) return;
 
-    const cardIndex = player.hand.findIndex(c => c.rank === cardToPlay.rank && c.suit === cardToPlay.suit);
+    const cardIndex = player.hand.findIndex((c: Card) => c.rank === cardToPlay.rank && c.suit === cardToPlay.suit);
     if (cardIndex === -1) return;
 
     player.hand.splice(cardIndex, 1);
     gameState.currentTrick.push({ playerId: socket.id, card: cardToPlay });
     
     if (gameState.currentTrick.length < 4) {
-      const currentPlayerIndex = gameState.players.findIndex(p => p.id === socket.id);
+      const currentPlayerIndex = gameState.players.findIndex((p: Player) => p.id === socket.id);
       const nextPlayerIndex = (currentPlayerIndex + 1) % 4;
       gameState.currentPlayerTurn = gameState.players[nextPlayerIndex].id;
       updateAndBroadcastGameState();
@@ -181,15 +180,15 @@ io.on('connection', (socket) => {
       updateAndBroadcastGameState();
       
       const winnerInfo = determineTrickWinner(gameState.currentTrick, gameState.trumpSuit!);
-      const winningTeam = gameState.teams.find(t => t.players.some(p => p.id === winnerInfo.playerId))!;
-      winningTeam.collectedCards.push(...gameState.currentTrick.map(pc => pc.card));
-      const winnerPlayer = gameState.players.find(p => p.id === winnerInfo.playerId)!;
+      const winningTeam = gameState.teams.find((t: Team) => t.players.some((p: Player) => p.id === winnerInfo.playerId))!;
+      winningTeam.collectedCards.push(...gameState.currentTrick.map((pc: PlayedCard) => pc.card));
+      const winnerPlayer = gameState.players.find((p: Player) => p.id === winnerInfo.playerId)!;
       
       setTimeout(() => {
         const isHandOver = winnerPlayer.hand.length === 0;
         if (isHandOver) {
           console.log("Manche terminée !");
-          const defendingTeam = gameState.teams.find(t => t.name !== gameState.takerTeamName)!;
+          const defendingTeam = gameState.teams.find((t: Team) => t.name !== gameState.takerTeamName)!;
           const isCapot = defendingTeam.collectedCards.length === 0;
           
           const roundScores = calculateRoundScores(gameState.teams, gameState.takerTeamName!, winningTeam.name, gameState.trumpSuit!, isCapot);
@@ -199,11 +198,19 @@ io.on('connection', (socket) => {
             team.score += roundScores[team.name] || 0;
           }
 
-          const gameWinner = gameState.teams.find(t => t.score >= WINNING_SCORE);
+          const gameWinner = gameState.teams.find((t: Team) => t.score >= WINNING_SCORE);
           if (gameWinner) {
             gameState.phase = 'game_over';
             console.log(`Partie terminée ! Vainqueur : ${gameWinner.name}`);
           } else {
+            const dealerIndex = gameState.players.findIndex((p: Player) => p.id === gameState.players[0].id);
+            const nextDealerIndex = (dealerIndex + 1) % 4;
+            // On fait tourner le dealer pour la prochaine main
+            const rotatedPlayers = [...gameState.players];
+            const dealer = rotatedPlayers.shift()!;
+            rotatedPlayers.push(dealer);
+            gameState.players = rotatedPlayers;
+            
             gameState.phase = 'end';
           }
         } else {
@@ -216,6 +223,7 @@ io.on('connection', (socket) => {
   });
   
   socket.on('nextHand', () => {
+    // Le nouveau dealer est maintenant en position 0
     if (gameState.phase === 'end' && gameState.players[0]?.id === socket.id) {
       startNewHand();
     }
@@ -231,13 +239,13 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
-    const player = gameState.players.find(p => p.id === socket.id);
+    const player = gameState.players.find((p: Player) => p.id === socket.id);
     if (player) {
       console.log(`Le joueur ${player.name} s'est déconnecté.`);
       player.isConnected = false;
       updateAndBroadcastGameState();
       
-      const allDisconnected = gameState.players.every(p => !p.isConnected);
+      const allDisconnected = gameState.players.every((p: Player) => !p.isConnected);
       if (gameState.players.length === 4 && allDisconnected) {
           console.log("Tous les joueurs sont déconnectés. Réinitialisation de la partie.");
           gameState = { phase: 'waiting', players: [], teams: [], deck: [], currentTrick: [] };
@@ -247,7 +255,6 @@ io.on('connection', (socket) => {
   });
 });
 
-// ✅ LIGNE IMPORTANTE : Le '0.0.0.0' est essentiel pour que le serveur soit accessible de l'extérieur dans un conteneur (comme sur Render).
 httpServer.listen(PORT, '0.0.0.0', () => {
   console.log(`Le serveur de jeu écoute sur le port ${PORT}`);
 });
