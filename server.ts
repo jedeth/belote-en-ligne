@@ -1,4 +1,4 @@
-// server.ts - VERSION FINALE ET CORRIGÉE
+// server.ts
 
 import express from 'express';
 import http from 'http';
@@ -36,16 +36,12 @@ function startNewHand() {
   biddingPasses = 0;
   const deck = shuffleDeck(createDeck());
   
-  // Réinitialisation des scores si c'est la toute première main
-  if (gameState.teams.length > 0 && gameState.teams.every((t: Team) => t.score === 0)) {
-     // C'est une nouvelle partie, on garde les équipes mais on ne fait rien
-  } else if (gameState.teams.length === 0) {
+  if (gameState.teams.length === 0) {
     gameState.teams = [
       { name: 'Équipe A', players: [gameState.players[0], gameState.players[2]], score: 0, collectedCards: [], hasDeclaredBelote: false },
       { name: 'Équipe B', players: [gameState.players[1], gameState.players[3]], score: 0, collectedCards: [], hasDeclaredBelote: false }
     ];
   }
-
 
   for (const p of gameState.players) { p.hand = []; }
   for (const t of gameState.teams) {
@@ -68,6 +64,7 @@ function startNewHand() {
   gameState.currentPlayerTurn = gameState.players[0].id;
   gameState.currentTrick = [];
   gameState.roundPoints = undefined;
+  gameState.contractResult = undefined;
   updateAndBroadcastGameState();
 }
 
@@ -85,9 +82,7 @@ io.on('connection', (socket) => {
       if (gameState.currentPlayerTurn === oldSocketId) {
         gameState.currentPlayerTurn = socket.id;
       }
-
       updateAndBroadcastGameState();
-
     } else if (gameState.players.length < 4 && !gameState.players.some((p: Player) => p.name === playerName)) {
       console.log(`Le joueur ${playerName} (${socket.id}) a rejoint la partie.`);
       const newPlayer: Player = { id: socket.id, name: playerName, hand: [], isConnected: true };
@@ -190,23 +185,21 @@ io.on('connection', (socket) => {
           console.log("Manche terminée !");
           const defendingTeam = gameState.teams.find((t: Team) => t.name !== gameState.takerTeamName)!;
           const isCapot = defendingTeam.collectedCards.length === 0;
+
           const roundOutcome = calculateRoundScores(gameState.teams, gameState.takerTeamName!, winningTeam.name, gameState.trumpSuit!, isCapot);
-          const roundScores = calculateRoundScores(gameState.teams, gameState.takerTeamName!, winningTeam.name, gameState.trumpSuit!, isCapot);
-          gameState.roundPoints = roundScores;
+
+          gameState.roundPoints = roundOutcome.scores;
           gameState.contractResult = roundOutcome.result;
 
           for (const team of gameState.teams) {
-            team.score += roundScores[team.name] || 0;
+            team.score += roundOutcome.scores[team.name] || 0;
           }
-
+          
           const gameWinner = gameState.teams.find((t: Team) => t.score >= WINNING_SCORE);
           if (gameWinner) {
             gameState.phase = 'game_over';
             console.log(`Partie terminée ! Vainqueur : ${gameWinner.name}`);
           } else {
-            const dealerIndex = gameState.players.findIndex((p: Player) => p.id === gameState.players[0].id);
-            const nextDealerIndex = (dealerIndex + 1) % 4;
-            // On fait tourner le dealer pour la prochaine main
             const rotatedPlayers = [...gameState.players];
             const dealer = rotatedPlayers.shift()!;
             rotatedPlayers.push(dealer);
@@ -215,8 +208,11 @@ io.on('connection', (socket) => {
             gameState.phase = 'end';
           }
         } else {
+          // ############# BLOC DE CORRECTION #############
+          // On prépare le pli suivant s'il ne s'agit pas de la fin de la manche
           gameState.currentTrick = [];
           gameState.currentPlayerTurn = winnerInfo.playerId;
+          // #############################################
         }
         updateAndBroadcastGameState();
       }, 2500);
@@ -224,7 +220,6 @@ io.on('connection', (socket) => {
   });
   
   socket.on('nextHand', () => {
-    // Le nouveau dealer est maintenant en position 0
     if (gameState.phase === 'end' && gameState.players[0]?.id === socket.id) {
       startNewHand();
     }
