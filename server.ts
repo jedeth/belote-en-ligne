@@ -6,9 +6,11 @@ import { Server } from 'socket.io';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+// Note: Assurez-vous que ces chemins d'importation sont corrects par rapport à votre structure de projet
 import { createDeck, shuffleDeck, determineTrickWinner, calculateRoundScores } from './src/logic/gameLogic.ts';
 import { Player, GameState, Suit, Card, Team } from './src/types/belote.ts';
 
+// ✅ LIGNE IMPORTANTE : Utilise le port fourni par Render, ou 3000 sur votre machine locale.
 const PORT = process.env.PORT || 3000;
 const WINNING_SCORE = 1000;
 
@@ -241,12 +243,11 @@ io.on('connection', (socket) => {
           gameState = { phase: 'waiting', players: [], teams: [], deck: [], currentTrick: [] };
           biddingPasses = 0;
       }
-    } else {
-        // C'était une connexion technique ou un onglet non identifié, on ne fait rien.
     }
   });
 });
 
+// ✅ LIGNE IMPORTANTE : Le '0.0.0.0' est essentiel pour que le serveur soit accessible de l'extérieur dans un conteneur (comme sur Render).
 httpServer.listen(PORT, '0.0.0.0', () => {
   console.log(`Le serveur de jeu écoute sur le port ${PORT}`);
 });
