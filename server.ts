@@ -7,8 +7,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 // Note: Assurez-vous que ces chemins d'importation sont corrects par rapport à votre structure de projet
-import { createDeck, shuffleDeck, determineTrickWinner, calculateRoundScores } from './src/logic/gameLogic';
-import { type Player, type GameState, type Suit, type Card, type Team } from './src/types/belote'; 
+import { createDeck, shuffleDeck, determineTrickWinner, calculateRoundScores } from './src/logic/gameLogic.js';
+import { type Player, type GameState, type Suit, type Card, type Team, type PlayedCard } from './src/types/belote.js';
 
 // ✅ LIGNE IMPORTANTE : Utilise le port fourni par Render, ou 3000 sur votre machine locale.
 const PORT = parseInt(process.env.PORT || '3000', 10);
