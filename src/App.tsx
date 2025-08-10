@@ -5,7 +5,8 @@ import { io, Socket } from 'socket.io-client';
 import { type GameState, type Suit, type Card, WINNING_SCORE } from './types/belote.ts';
 import CardImage from './components/CardImage.tsx';
 
-const socket: Socket = io(`http://${window.location.hostname}:3000`);
+const URL = import.meta.env.VITE_API_URL || `http://localhost:3000`;
+const socket: Socket = io(URL);
 const SUITS: Suit[] = ['Pique', 'Coeur', 'Carreau', 'Trefle'];
 
 function App() {
