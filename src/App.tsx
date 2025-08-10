@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { GameState, Suit, Card, WINNING_SCORE } from './types/belote.ts';
+import { type GameState, type Suit, type Card, WINNING_SCORE } from './types/belote.ts';
 import CardImage from './components/CardImage.tsx';
 
 const socket: Socket = io(`http://${window.location.hostname}:3000`);

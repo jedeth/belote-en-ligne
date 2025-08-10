@@ -1,6 +1,6 @@
 // src/logic/gameLogic.ts
 
-import { Suit, Rank, Card, PlayedCard, Team } from '../types/belote.ts';
+import { type Suit, type Rank, type Card, type PlayedCard, type Team } from '../types/belote.ts';
 
 const suits: Suit[] = ['Pique', 'Coeur', 'Carreau', 'Trefle'];
 const ranks: Rank[] = ['7', '8', '9', '10', 'Valet', 'Dame', 'Roi', 'As'];

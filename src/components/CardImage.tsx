@@ -1,6 +1,6 @@
 // src/components/CardImage.tsx
 import React from 'react';
-import { Card } from '../types/belote.ts';
+import { type Card } from '../types/belote.ts';
 import { cardImageMap } from '../assets/cards/index.ts';
 
 interface CardImageProps {
