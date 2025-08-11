@@ -66,51 +66,56 @@ export function calculateRoundScores(
     dixDeDerWinnerTeamName: string, 
     trumpSuit: Suit,
     isCapot: boolean
-): { scores: { [teamName: string]: number }, result: 'succeeded' | 'failed' } { // <--- Changement du type de retour
+): { scores: { [teamName: string]: number }, result: 'succeeded' | 'failed' } {
   
   const takerTeam = teams.find(t => t.name === takerTeamName)!;
   const defendingTeam = teams.find(t => t.name !== takerTeamName)!;
   
-  let finalTakerScore = 0;
-  let finalDefenderScore = 0;
-  let result: 'succeeded' | 'failed'; // <--- Nouvelle variable
+  let takerContractPoints = 0;
+  let defenderContractPoints = 0;
+  let result: 'succeeded' | 'failed';
 
-  if (isCapot) {
-      console.log(`Capot réussi par l'équipe ${takerTeamName}`);
-      finalTakerScore = 252;
-      result = 'succeeded';
+  // ### DÉBUT DE LA LOGIQUE CORRIGÉE ###
+
+  // 1. On calcule les points des cartes de chaque équipe
+  let takerCardPoints = takerTeam.collectedCards.reduce((sum, card) => sum + (card.suit === trumpSuit ? CARD_POINTS_TRUMP[card.rank] : CARD_POINTS_NORMAL[card.rank]), 0);
+  let defenderCardPoints = defendingTeam.collectedCards.reduce((sum, card) => sum + (card.suit === trumpSuit ? CARD_POINTS_TRUMP[card.rank] : CARD_POINTS_NORMAL[card.rank]), 0);
+
+  // 2. On ajoute le "dix de der"
+  if (takerTeam.name === dixDeDerWinnerTeamName) {
+    takerCardPoints += 10;
   } else {
-    let takerCardPoints = 0;
-    for (const card of takerTeam.collectedCards) {
-      takerCardPoints += card.suit === trumpSuit ? CARD_POINTS_TRUMP[card.rank] : CARD_POINTS_NORMAL[card.rank];
-    }
-    let defenderCardPoints = 0;
-    for (const card of defendingTeam.collectedCards) {
-      defenderCardPoints += card.suit === trumpSuit ? CARD_POINTS_TRUMP[card.rank] : CARD_POINTS_NORMAL[card.rank];
-    }
-    
-    if (takerTeam.name === dixDeDerWinnerTeamName) takerCardPoints += 10;
-    else defenderCardPoints += 10;
-
-    // On détermine si le contrat est réussi
-    if (takerCardPoints >= 82 && takerCardPoints > defenderCardPoints) {
-      console.log(`Contrat réussi: ${takerCardPoints} à ${defenderCardPoints}`);
-      finalTakerScore = takerCardPoints;
-      finalDefenderScore = defenderCardPoints;
-      result = 'succeeded'; // <--- On stocke le résultat
-    } else {
-      console.log(`Contrat chuté: ${takerCardPoints} à ${defenderCardPoints}`);
-      finalTakerScore = 0;
-      finalDefenderScore = 162;
-      result = 'failed'; // <--- On stocke le résultat
-    }
+    defenderCardPoints += 10;
   }
 
-  // On ajoute les points de la belote après le calcul du contrat
-  if (takerTeam.hasDeclaredBelote) finalTakerScore += 20;
-  if (defendingTeam.hasDeclaredBelote) finalDefenderScore += 20;
-  
-  // On retourne un objet plus complet
+  // 3. On calcule les points du contrat (chute, capot, ou réussi)
+  if (isCapot) {
+      console.log(`Capot réussi par l'équipe ${takerTeamName}`);
+      takerContractPoints = 252;
+      defenderContractPoints = 0;
+      result = 'succeeded';
+  } else if (takerCardPoints >= 82 && takerCardPoints > defenderCardPoints) {
+      console.log(`Contrat réussi: ${takerCardPoints} à ${defenderCardPoints}`);
+      takerContractPoints = takerCardPoints;
+      defenderContractPoints = defenderCardPoints;
+      result = 'succeeded';
+  } else {
+      console.log(`Contrat chuté: ${takerCardPoints} à ${defenderCardPoints}`);
+      takerContractPoints = 0;
+      defenderContractPoints = 162;
+      result = 'failed';
+  }
+
+  // 4. On ajoute les points de la belote, qui sont "imprenables"
+  const takerBelotePoints = takerTeam.beloteState === 'rebelote' ? 20 : 0;
+  const defenderBelotePoints = defendingTeam.beloteState === 'rebelote' ? 20 : 0;
+
+  // 5. On calcule le score final de la manche
+  const finalTakerScore = takerContractPoints + takerBelotePoints;
+  const finalDefenderScore = defenderContractPoints + defenderBelotePoints;
+
+  // ### FIN DE LA LOGIQUE CORRIGÉE ###
+
   return {
       scores: {
         [takerTeam.name]: finalTakerScore,

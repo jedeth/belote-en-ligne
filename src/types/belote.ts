@@ -12,7 +12,16 @@ export interface Player {
   id: string;
   name: string;
   hand: Card[];
-  isConnected: boolean; // Ajout pour suivre l'état de la connexion
+  isConnected: boolean;
+}
+
+export interface Team {
+  name: string;
+  players: Player[];
+  score: number;
+  collectedCards: Card[];
+  beloteState: 'none' | 'belote' | 'rebelote';
+  beloteAnnounceMissed: boolean;
 }
 
 export interface PlayedCard {
@@ -20,29 +29,28 @@ export interface PlayedCard {
   card: Card;
 }
 
-export interface Team {
-    name: 'Équipe A' | 'Équipe B';
-    players: Player[];
-    score: number;
-    collectedCards: Card[];
-    hasDeclaredBelote: boolean;
+export interface ScoreHistoryEntry {
+  round: number;
+  scores: { [teamName: string]: number };
+  takerTeamName: string;
+  result: 'succeeded' | 'failed';
 }
 
-export type GamePhase = 'waiting' | 'bidding' | 'bidding_round_2' | 'playing' | 'end' | 'game_over';
-
 export interface GameState {
-  phase: GamePhase;
+  phase: 'waiting' | 'bidding' | 'bidding_round_2' | 'playing' | 'end' | 'game_over';
   players: Player[];
   teams: Team[];
   deck: Card[];
   biddingCard?: Card;
   currentPlayerTurn?: string;
-  takerTeamName?: string;
   trumpSuit?: Suit;
+  takerTeamName?: string;
+  beloteHolderId?: string;
   currentTrick: PlayedCard[];
   roundPoints?: { [teamName: string]: number };
   contractResult?: 'succeeded' | 'failed';
-  beloteHolderId?: string;
+  scoreHistory: ScoreHistoryEntry[];
+  trickHistory: Card[][]; // <--- PROPRIÉTÉ AJOUTÉE
 }
 
-export const WINNING_SCORE = 701;
+export const WINNING_SCORE = 1000;

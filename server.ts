@@ -4,7 +4,6 @@ import express from 'express';
 import http from 'http';
 import { Server } from 'socket.io';
 import { createDeck, shuffleDeck, determineTrickWinner, calculateRoundScores, createFixedHandForBeloteTest } from './src/logic/gameLogic.js';
-
 import { type Player, type GameState, type Suit, type Card, type Team, type PlayedCard } from './src/types/belote.js';
 
 const PORT = parseInt(process.env.PORT || '3000', 10);
@@ -25,6 +24,8 @@ let gameState: GameState = {
   teams: [],
   deck: [],
   currentTrick: [],
+  scoreHistory: [],
+  trickHistory: [],
 };
 let biddingPasses = 0;
 
@@ -36,39 +37,49 @@ function startNewHand() {
   console.log("Début d'une nouvelle manche.");
   biddingPasses = 0;
   
-  // Activez ou désactivez le mode test ici
-  const isTestMode = false; 
+  let deck: Card[];
 
-  if (isTestMode) {
-    console.log("ATTENTION : Mode test de distribution activé !");
-    const testData = createFixedHandForBeloteTest();
-    gameState.players.forEach((player, index) => {
-      player.hand = testData.hands[index];
-    });
-    gameState.deck = testData.deck;
-    gameState.biddingCard = testData.biddingCard;
+  // Si ce n'est pas la première manche, on ne mélange pas.
+  if (gameState.scoreHistory.length > 0 && gameState.trickHistory.length === 8) {
+    console.log("Distribution à partir de la manche précédente.");
+    // 1. On rassemble les cartes des 8 plis dans l'ordre
+    let nextDeck = gameState.trickHistory.flat();
+
+    // 2. On simule la "coupe"
+    const cutPoint = Math.floor(Math.random() * 24) + 4; 
+    const cutDeck = [...nextDeck.slice(cutPoint), ...nextDeck.slice(0, cutPoint)];
+    console.log(`Le paquet a été coupé à la carte n°${cutPoint}.`);
+    
+    deck = cutDeck;
 
   } else {
-    // Comportement normal et aléatoire
-    const deck = shuffleDeck(createDeck());
-    for (const p of gameState.players) { p.hand = []; }
-    for (let i = 0; i < 5; i++) {
-      for (const p of gameState.players) { p.hand.push(deck.pop()!); }
-    }
-    gameState.biddingCard = deck.pop()!;
-    gameState.deck = deck;
+    // Comportement normal pour la TOUTE PREMIÈRE MANCHE
+    console.log("Première manche : création et mélange du paquet.");
+    deck = shuffleDeck(createDeck());
   }
+
+  // On vide l'historique des plis pour la nouvelle manche
+  gameState.trickHistory = [];
   
-  if (gameState.teams.length === 0) {
+  // 3. On distribue les cartes
+  for (const p of gameState.players) { p.hand = []; }
+  for (let i = 0; i < 5; i++) {
+    for (const p of gameState.players) { p.hand.push(deck.pop()!); }
+  }
+  gameState.biddingCard = deck.pop()!;
+  gameState.deck = deck;
+
+  if (gameState.teams.length === 0 && gameState.players.length === 4) {
     gameState.teams = [
-      { name: 'Équipe A', players: [gameState.players[0], gameState.players[2]], score: 0, collectedCards: [], beloteState: 'none' },
-      { name: 'Équipe B', players: [gameState.players[1], gameState.players[3]], score: 0, collectedCards: [], beloteState: 'none' }
+      { name: 'Équipe A', players: [gameState.players[0], gameState.players[2]], score: 0, collectedCards: [], beloteState: 'none', beloteAnnounceMissed: false },
+      { name: 'Équipe B', players: [gameState.players[1], gameState.players[3]], score: 0, collectedCards: [], beloteState: 'none', beloteAnnounceMissed: false }
     ];
   }
 
   for (const t of gameState.teams) {
     t.collectedCards = [];
     t.beloteState = 'none';
+    t.beloteAnnounceMissed = false;
   }
   
   gameState.phase = 'bidding';
@@ -81,6 +92,7 @@ function startNewHand() {
   gameState.contractResult = undefined;
   updateAndBroadcastGameState();
 }
+
 io.on('connection', (socket) => {
   
   socket.on('joinGame', (playerName: string) => {
@@ -119,6 +131,13 @@ io.on('connection', (socket) => {
       gameState.trumpSuit = choice === 'take' ? gameState.biddingCard!.suit : choice as Suit;
       taker.hand.push(gameState.biddingCard!);
       
+      for (const p of gameState.players) {
+        const cardsToDeal = (p.id === taker.id) ? 2 : 3;
+        for (let i = 0; i < cardsToDeal; i++) {
+          if (gameState.deck.length > 0) p.hand.push(gameState.deck.pop()!);
+        }
+      }
+
       const trump = gameState.trumpSuit;
       for (const p of gameState.players) {
         const hasKing = p.hand.some((c: Card) => c.rank === 'Roi' && c.suit === trump);
@@ -127,13 +146,6 @@ io.on('connection', (socket) => {
           gameState.beloteHolderId = p.id;
           console.log(`Le joueur ${p.name} a la belote.`);
           break;
-        }
-      }
-      
-      for (const p of gameState.players) {
-        const cardsToDeal = (p.id === taker.id) ? 2 : 3;
-        for (let i = 0; i < cardsToDeal; i++) {
-          if (gameState.deck.length > 0) p.hand.push(gameState.deck.pop()!);
         }
       }
       
@@ -157,33 +169,24 @@ io.on('connection', (socket) => {
     }
   });
 
-socket.on('declareBelote', () => {
-  if (socket.id !== gameState.beloteHolderId) return;
+  socket.on('declareBelote', () => {
+    if (socket.id !== gameState.beloteHolderId) return;
 
-  const playerTeam = gameState.teams.find((t: Team) => t.players.some((p: Player) => p.id === socket.id));
-  if (!playerTeam || playerTeam.beloteState === 'rebelote') return;
+    const playerTeam = gameState.teams.find((t: Team) => t.players.some((p: Player) => p.id === socket.id));
+    if (!playerTeam || playerTeam.beloteState === 'rebelote') return;
 
-  // ############# DÉBUT DE LA CORRECTION #############
+    const nextBeloteState = playerTeam.beloteState === 'none' ? 'belote' : 'rebelote';
 
-  // On détermine le prochain état de l'annonce
-  const nextBeloteState = playerTeam.beloteState === 'none' ? 'belote' : 'rebelote';
+    gameState.teams = gameState.teams.map((team: Team) => {
+      if (team.name === playerTeam.name) {
+        console.log(`L'équipe ${team.name} a annoncé : ${nextBeloteState}.`);
+        return { ...team, beloteState: nextBeloteState };
+      }
+      return team;
+    });
 
-  // On crée un nouveau tableau d'équipes avec la modification
-  gameState.teams = gameState.teams.map((team: Team) => {
-    if (team.name === playerTeam.name) {
-      // Pour l'équipe qui déclare, on retourne un nouvel objet avec l'état mis à jour
-      console.log(`L'équipe ${team.name} a annoncé : ${nextBeloteState}.`);
-      return { ...team, beloteState: nextBeloteState };
-    }
-    // Pour l'autre équipe, on retourne l'objet sans changement
-    return team;
+    updateAndBroadcastGameState();
   });
-
-  // On envoie la mise à jour à tout le monde
-  updateAndBroadcastGameState();
-
-  // ############## FIN DE LA CORRECTION ###############
-});
 
   socket.on('playCard', (cardToPlay: Card) => {
     if (gameState.phase !== 'playing' || socket.id !== gameState.currentPlayerTurn) return;
@@ -192,7 +195,7 @@ socket.on('declareBelote', () => {
 
     const cardIndex = player.hand.findIndex((c: Card) => c.rank === cardToPlay.rank && c.suit === cardToPlay.suit);
     if (cardIndex === -1) return;
-
+    
     player.hand.splice(cardIndex, 1);
     gameState.currentTrick.push({ playerId: socket.id, card: cardToPlay });
     
@@ -209,6 +212,22 @@ socket.on('declareBelote', () => {
       winningTeam.collectedCards.push(...gameState.currentTrick.map((pc: PlayedCard) => pc.card));
       const winnerPlayer = gameState.players.find((p: Player) => p.id === winnerInfo.playerId)!;
       
+      gameState.trickHistory.push(gameState.currentTrick.map(pc => pc.card));
+      console.log(`Pli n°${gameState.trickHistory.length} enregistré.`);
+      
+      const beloteHolderTeam = gameState.teams.find(t => t.players.some(p => p.id === gameState.beloteHolderId));
+      if (beloteHolderTeam && beloteHolderTeam.beloteState === 'none') {
+        const beloteCardPlayedInTrick = gameState.currentTrick.find(pc => 
+            pc.playerId === gameState.beloteHolderId &&
+            (pc.card.rank === 'Roi' || pc.card.rank === 'Dame') &&
+            pc.card.suit === gameState.trumpSuit
+        );
+        if (beloteCardPlayedInTrick) {
+          beloteHolderTeam.beloteAnnounceMissed = true;
+          console.log(`L'équipe ${beloteHolderTeam.name} a manqué l'opportunité d'annoncer la belote.`);
+        }
+      }
+
       setTimeout(() => {
         const isHandOver = winnerPlayer.hand.length === 0;
         if (isHandOver) {
@@ -224,6 +243,13 @@ socket.on('declareBelote', () => {
           for (const team of gameState.teams) {
             team.score += roundOutcome.scores[team.name] || 0;
           }
+
+          gameState.scoreHistory.push({
+            round: gameState.scoreHistory.length + 1,
+            scores: roundOutcome.scores,
+            takerTeamName: gameState.takerTeamName!,
+            result: roundOutcome.result,
+          });
           
           const gameWinner = gameState.teams.find((t: Team) => t.score >= WINNING_SCORE);
           if (gameWinner) {
@@ -238,11 +264,8 @@ socket.on('declareBelote', () => {
             gameState.phase = 'end';
           }
         } else {
-          // ############# BLOC DE CORRECTION #############
-          // On prépare le pli suivant s'il ne s'agit pas de la fin de la manche
           gameState.currentTrick = [];
           gameState.currentPlayerTurn = winnerInfo.playerId;
-          // #############################################
         }
         updateAndBroadcastGameState();
       }, 2500);
@@ -256,12 +279,18 @@ socket.on('declareBelote', () => {
   });
 
   socket.on('newGame', () => {
-    if (gameState.players[0]?.id === socket.id) {
-      console.log("Nouvelle partie demandée.");
-      gameState = { phase: 'waiting', players: [], teams: [], deck: [], currentTrick: [] };
-      biddingPasses = 0;
-      io.emit('gameStateUpdate', gameState);
-    }
+    console.log("Nouvelle partie demandée.");
+    gameState = { 
+      phase: 'waiting', 
+      players: [], 
+      teams: [], 
+      deck: [], 
+      currentTrick: [],
+      scoreHistory: [],
+      trickHistory: []
+    };
+    biddingPasses = 0;
+    io.emit('gameStateUpdate', gameState);
   });
 
   socket.on('disconnect', () => {
@@ -274,7 +303,7 @@ socket.on('declareBelote', () => {
       const allDisconnected = gameState.players.every((p: Player) => !p.isConnected);
       if (gameState.players.length === 4 && allDisconnected) {
           console.log("Tous les joueurs sont déconnectés. Réinitialisation de la partie.");
-          gameState = { phase: 'waiting', players: [], teams: [], deck: [], currentTrick: [] };
+          gameState = { phase: 'waiting', players: [], teams: [], deck: [], currentTrick: [], scoreHistory: [], trickHistory: [] };
           biddingPasses = 0;
       }
     }
