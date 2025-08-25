@@ -8,9 +8,11 @@ interface GameTableProps {
   gameState: GameState;
   me: Player;
   onPlayCard: (card: Card) => void;
+  localStream: MediaStream | null;
+  remoteStreams: { [peerId: string]: MediaStream };
 }
 
-const GameTable: React.FC<GameTableProps> = ({ gameState, me, onPlayCard }) => {
+const GameTable: React.FC<GameTableProps> = ({ gameState, me, onPlayCard, localStream, remoteStreams }) => {
   const { players, currentPlayerTurn } = gameState;
 
   const myIndex = players.findIndex(p => p.id === me.id);
@@ -29,8 +31,9 @@ const GameTable: React.FC<GameTableProps> = ({ gameState, me, onPlayCard }) => {
 
   const tableStyle: React.CSSProperties = {
     display: 'grid',
-    gridTemplateColumns: '200px 1fr 200px',
-    gridTemplateRows: '1fr 2fr 1fr',
+    gridTemplateColumns: '250px 1fr 250px', // Increased space for side players
+    gridTemplateRows: 'auto 1fr auto', // Flexible rows
+    gridGap: '20px',
     gridTemplateAreas: `
       ". top ."
       "left center right"
@@ -42,7 +45,7 @@ const GameTable: React.FC<GameTableProps> = ({ gameState, me, onPlayCard }) => {
     padding: '20px',
     backgroundColor: '#004d00', // Vert tapis de jeu
     color: 'white',
-    position: 'relative', // Pour positionner d'autres éléments par-dessus si besoin
+    position: 'relative',
   };
 
   const centerStyle: React.CSSProperties = {
@@ -53,7 +56,7 @@ const GameTable: React.FC<GameTableProps> = ({ gameState, me, onPlayCard }) => {
     alignItems: 'center',
     gap: '20px',
     border: '2px solid rgba(255, 255, 255, 0.1)',
-    borderRadius: '50%', // Pour un look de table ronde
+    borderRadius: '50%',
     padding: '20px',
     backgroundColor: 'rgba(0, 0, 0, 0.2)',
   };
@@ -63,32 +66,30 @@ const GameTable: React.FC<GameTableProps> = ({ gameState, me, onPlayCard }) => {
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    flexDirection: 'column',
   });
 
   return (
     <div style={tableStyle}>
       <div style={positionStyle('top')}>
-        <PlayerHand player={topPlayer} isMe={false} />
+        <PlayerHand player={topPlayer} isMe={false} stream={remoteStreams[topPlayer.id]} />
       </div>
       <div style={positionStyle('left')}>
-        {/* Pour les joueurs sur le côté, on pourrait vouloir une vue verticale */}
-        <PlayerHand player={leftPlayer} isMe={false} />
+        <PlayerHand player={leftPlayer} isMe={false} stream={remoteStreams[leftPlayer.id]} />
       </div>
       <div style={positionStyle('right')}>
-        <PlayerHand player={rightPlayer} isMe={false} />
+        <PlayerHand player={rightPlayer} isMe={false} stream={remoteStreams[rightPlayer.id]} />
       </div>
       <div style={positionStyle('bottom')}>
         <PlayerHand
           player={bottomPlayer}
           isMe={true}
+          stream={localStream}
           onCardClick={onPlayCard}
           isMyTurn={isMyTurn}
         />
       </div>
 
       <div style={centerStyle}>
-        {/* Le pli en cours */}
         <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', alignItems: 'center', minHeight: '140px' }}>
           {gameState.currentTrick.map(({ playerId, card }, index) => {
             const player = gameState.players.find(p => p.id === playerId);
@@ -101,7 +102,6 @@ const GameTable: React.FC<GameTableProps> = ({ gameState, me, onPlayCard }) => {
           })}
         </div>
 
-        {/* La carte de prise */}
         {gameState.phase === 'bidding' && gameState.biddingCard && (
           <div style={{ textAlign: 'center', position: 'absolute' }}>
             <p>Preise</p>

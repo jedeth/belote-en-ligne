@@ -1,10 +1,11 @@
 // src/App.tsx
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { type GameState, type Suit, type Card, WINNING_SCORE } from './types/belote.js';
-import CardImage from './components/CardImage.tsx';
 import GameTable from './components/GameTable.tsx';
+import { WebRTCService } from './services/webRTCService';
+import VideoControls from './components/VideoControls';
 
 const URL = import.meta.env.VITE_API_URL || `http://localhost:3000`;
 const socket: Socket = io(URL);
@@ -13,6 +14,11 @@ const SUITS: Suit[] = ['Pique', 'Coeur', 'Carreau', 'Trefle'];
 function App() {
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [playerName, setPlayerName] = useState(localStorage.getItem('belotePlayerName') || '');
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  const [remoteStreams, setRemoteStreams] = useState<{ [key: string]: MediaStream }>({});
+  const webRTCServiceRef = useRef<WebRTCService | null>(null);
+  const [isAudioEnabled, setIsAudioEnabled] = useState(true);
+  const [isVideoEnabled, setIsVideoEnabled] = useState(true);
 
   useEffect(() => {
     socket.on('connect', () => {
@@ -46,7 +52,64 @@ function App() {
   const handleNewGame = () => { socket.emit('newGame'); };
   const handleDeclareBelote = () => { socket.emit('declareBelote'); };
 
+  const handleToggleAudio = () => {
+    if (webRTCServiceRef.current) {
+      const newState = webRTCServiceRef.current.toggleAudio();
+      setIsAudioEnabled(newState);
+    }
+  };
+
+  const handleToggleVideo = () => {
+    if (webRTCServiceRef.current) {
+      const newState = webRTCServiceRef.current.toggleVideo();
+      setIsVideoEnabled(newState);
+    }
+  };
+
   const me = gameState?.players.find(p => p.id === socket.id);
+  const playerIds = JSON.stringify(gameState?.players.map(p => p.id).sort());
+
+
+  useEffect(() => {
+    // Only run if we are in the game and have a full lobby
+    if (me && gameState && gameState.players.length === 4) {
+      if (!webRTCServiceRef.current) {
+        console.log('[WebRTC] Initializing service...');
+        const service = new WebRTCService(
+          socket,
+          (stream) => setLocalStream(stream),
+          (stream, peerId) => {
+            setRemoteStreams(prev => ({ ...prev, [peerId]: stream }));
+          },
+          (peerId) => {
+            setRemoteStreams(prev => {
+              const newStreams = { ...prev };
+              delete newStreams[peerId];
+              return newStreams;
+            });
+          }
+        );
+        webRTCServiceRef.current = service;
+        service.init();
+        service.startLocalStream();
+      }
+
+      // Connect to all other players. The service handles not re-creating connections.
+      const otherPlayers = gameState.players.filter(p => p.id !== me.id);
+      otherPlayers.forEach(player => {
+        webRTCServiceRef.current?.callUser(player.id);
+      });
+    }
+
+    // Cleanup function on unmount or when dependencies change triggering a re-run
+    return () => {
+      if (webRTCServiceRef.current) {
+        console.log('[WebRTC] Destroying service...');
+        webRTCServiceRef.current.destroy();
+        webRTCServiceRef.current = null;
+      }
+    };
+  }, [me, playerIds]);
 
   if (!me) {
     const isGameFull = (gameState?.players?.length ?? 0) === 4;
@@ -88,7 +151,13 @@ function App() {
   return (
     <div style={{ width: '100vw', height: '100vh', overflow: 'hidden', backgroundColor: '#004d00' }}>
       {isGamePhase && gameState && me ? (
-        <GameTable gameState={gameState} me={me} onPlayCard={handlePlayCard} />
+        <GameTable
+          gameState={gameState}
+          me={me}
+          onPlayCard={handlePlayCard}
+          localStream={localStream}
+          remoteStreams={remoteStreams}
+        />
       ) : (
         // Fallback for non-game phases or if gameState/me is null
         <div style={{ padding: '20px', color: 'white' }}>
@@ -179,6 +248,16 @@ function App() {
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Video Controls (Bottom Center) */}
+          <div style={{ position: 'absolute', bottom: '20px', left: '50%', transform: 'translateX(-50%)', pointerEvents: 'auto' }}>
+            <VideoControls
+              isAudioEnabled={isAudioEnabled}
+              isVideoEnabled={isVideoEnabled}
+              onToggleAudio={handleToggleAudio}
+              onToggleVideo={handleToggleVideo}
+            />
           </div>
         </div>
       )}

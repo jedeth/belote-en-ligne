@@ -3,7 +3,7 @@
 import express from 'express';
 import http from 'http';
 import { Server } from 'socket.io';
-import { createDeck, shuffleDeck, determineTrickWinner, calculateRoundScores, createFixedHandForBeloteTest } from './src/logic/gameLogic.js';
+import { createDeck, shuffleDeck, determineTrickWinner, calculateRoundScores } from './src/logic/gameLogic.js';
 import { type Player, type GameState, type Suit, type Card, type Team, type PlayedCard } from './src/types/belote.js';
 
 const PORT = parseInt(process.env.PORT || '3000', 10);
@@ -43,7 +43,7 @@ function startNewHand() {
   if (gameState.scoreHistory.length > 0 && gameState.trickHistory.length === 8) {
     console.log("Distribution à partir de la manche précédente.");
     // 1. On rassemble les cartes des 8 plis dans l'ordre
-    let nextDeck = gameState.trickHistory.flat();
+    const nextDeck = gameState.trickHistory.flat();
 
     // 2. On simule la "coupe"
     const cutPoint = Math.floor(Math.random() * 24) + 4; 
@@ -291,6 +291,25 @@ io.on('connection', (socket) => {
     };
     biddingPasses = 0;
     io.emit('gameStateUpdate', gameState);
+  });
+
+  // WebRTC Signaling Events
+  socket.on('webrtc-offer', ({ to, offer }) => {
+    console.log(`[webrtc] Offer from ${socket.id} to ${to}`);
+    // Relay the offer to the specific client
+    socket.to(to).emit('webrtc-offer', { from: socket.id, offer });
+  });
+
+  socket.on('webrtc-answer', ({ to, answer }) => {
+    console.log(`[webrtc] Answer from ${socket.id} to ${to}`);
+    // Relay the answer
+    socket.to(to).emit('webrtc-answer', { from: socket.id, answer });
+  });
+
+  socket.on('webrtc-ice-candidate', ({ to, candidate }) => {
+    console.log(`[webrtc] ICE Candidate from ${socket.id} to ${to}`);
+    // Relay the ICE candidate
+    socket.to(to).emit('webrtc-ice-candidate', { from: socket.id, candidate });
   });
 
   socket.on('disconnect', () => {
