@@ -10,9 +10,10 @@ interface GameTableProps {
   onPlayCard: (card: Card) => void;
   localStream: MediaStream | null;
   remoteStreams: { [peerId: string]: MediaStream };
+  peerStatuses: { [peerId: string]: string };
 }
 
-const GameTable: React.FC<GameTableProps> = ({ gameState, me, onPlayCard, localStream, remoteStreams }) => {
+const GameTable: React.FC<GameTableProps> = ({ gameState, me, onPlayCard, localStream, remoteStreams, peerStatuses }) => {
   const { players, currentPlayerTurn } = gameState;
 
   const myIndex = players.findIndex(p => p.id === me.id);
@@ -71,13 +72,13 @@ const GameTable: React.FC<GameTableProps> = ({ gameState, me, onPlayCard, localS
   return (
     <div style={tableStyle}>
       <div style={positionStyle('top')}>
-        <PlayerHand player={topPlayer} isMe={false} stream={remoteStreams[topPlayer.id]} />
+        <PlayerHand player={topPlayer} isMe={false} stream={remoteStreams[topPlayer.id]} connectionStatus={peerStatuses[topPlayer.id]} />
       </div>
       <div style={positionStyle('left')}>
-        <PlayerHand player={leftPlayer} isMe={false} stream={remoteStreams[leftPlayer.id]} />
+        <PlayerHand player={leftPlayer} isMe={false} stream={remoteStreams[leftPlayer.id]} connectionStatus={peerStatuses[leftPlayer.id]} />
       </div>
       <div style={positionStyle('right')}>
-        <PlayerHand player={rightPlayer} isMe={false} stream={remoteStreams[rightPlayer.id]} />
+        <PlayerHand player={rightPlayer} isMe={false} stream={remoteStreams[rightPlayer.id]} connectionStatus={peerStatuses[rightPlayer.id]} />
       </div>
       <div style={positionStyle('bottom')}>
         <PlayerHand
@@ -86,6 +87,7 @@ const GameTable: React.FC<GameTableProps> = ({ gameState, me, onPlayCard, localS
           stream={localStream}
           onCardClick={onPlayCard}
           isMyTurn={isMyTurn}
+          connectionStatus="connected" // Local stream is always 'connected'
         />
       </div>
 

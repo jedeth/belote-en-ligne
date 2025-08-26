@@ -19,17 +19,23 @@ export class WebRTCService {
   private onLocalStream: (stream: MediaStream) => void;
   private onRemoteStream: (stream: MediaStream, peerId: string) => void;
   private onPeerDisconnect: (peerId: string) => void;
+  private onPeerStatusChange: (peerId: string, status: string) => void;
+  private onMediaError: (error: Error) => void;
 
   constructor(
     socket: Socket,
     onLocalStream: (stream: MediaStream) => void,
     onRemoteStream: (stream: MediaStream, peerId: string) => void,
-    onPeerDisconnect: (peerId: string) => void
+    onPeerDisconnect: (peerId: string) => void,
+    onPeerStatusChange: (peerId: string, status: string) => void,
+    onMediaError: (error: Error) => void
   ) {
     this.socket = socket;
     this.onLocalStream = onLocalStream;
     this.onRemoteStream = onRemoteStream;
     this.onPeerDisconnect = onPeerDisconnect;
+    this.onPeerStatusChange = onPeerStatusChange;
+    this.onMediaError = onMediaError;
   }
 
   public init(): void {
@@ -47,7 +53,9 @@ export class WebRTCService {
       this.onLocalStream(this.localStream);
     } catch (error) {
       console.error('Error accessing media devices:', error);
-      // Handle error (e.g., show a message to the user)
+      if (error instanceof Error) {
+        this.onMediaError(error);
+      }
     }
   }
 
@@ -66,34 +74,31 @@ export class WebRTCService {
   }
 
   private createPeerConnection(peerId: string): RTCPeerConnection {
-    // Close any existing connection for this peer
     if (this.peerConnections[peerId]) {
-      this.closeConnection(peerId);
+      this.peerConnections[peerId].close();
     }
 
     const pc = new RTCPeerConnection(ICE_SERVERS);
     this.peerConnections[peerId] = pc;
 
-    // Add local stream tracks to the connection
     this.localStream?.getTracks().forEach(track => {
       pc.addTrack(track, this.localStream!);
     });
 
-    // Handle ICE candidates
     pc.onicecandidate = event => {
       if (event.candidate) {
         this.socket.emit('webrtc-ice-candidate', { to: peerId, candidate: event.candidate });
       }
     };
 
-    // Handle incoming remote streams
     pc.ontrack = event => {
       this.onRemoteStream(event.streams[0], peerId);
     };
 
-    // Handle connection state changes
     pc.onconnectionstatechange = () => {
-      if (pc.connectionState === 'disconnected' || pc.connectionState === 'closed' || pc.connectionState === 'failed') {
+      const status = pc.connectionState;
+      this.onPeerStatusChange(peerId, status); // Report status change
+      if (status === 'disconnected' || status === 'closed' || status === 'failed') {
         this.closeConnection(peerId);
       }
     };
@@ -159,17 +164,11 @@ export class WebRTCService {
   }
 
   public destroy(): void {
-    // Stop local media tracks
     this.localStream?.getTracks().forEach(track => track.stop());
-
-    // Close all peer connections
     Object.keys(this.peerConnections).forEach(this.closeConnection);
-
-    // Remove socket listeners
     this.socket.off('webrtc-offer', this.handleOffer);
     this.socket.off('webrtc-answer', this.handleAnswer);
     this.socket.off('webrtc-ice-candidate', this.handleIceCandidate);
-
     console.log('WebRTC service destroyed.');
   }
 }

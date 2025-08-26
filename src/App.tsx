@@ -19,6 +19,8 @@ function App() {
   const webRTCServiceRef = useRef<WebRTCService | null>(null);
   const [isAudioEnabled, setIsAudioEnabled] = useState(true);
   const [isVideoEnabled, setIsVideoEnabled] = useState(true);
+  const [peerStatuses, setPeerStatuses] = useState<{ [key: string]: string }>({});
+  const [mediaError, setMediaError] = useState<Error | null>(null);
 
   useEffect(() => {
     socket.on('connect', () => {
@@ -87,6 +89,12 @@ function App() {
               delete newStreams[peerId];
               return newStreams;
             });
+          },
+          (peerId, status) => {
+            setPeerStatuses(prev => ({ ...prev, [peerId]: status }));
+          },
+          (error) => {
+            setMediaError(error);
           }
         );
         webRTCServiceRef.current = service;
@@ -150,6 +158,23 @@ function App() {
 
   return (
     <div style={{ width: '100vw', height: '100vh', overflow: 'hidden', backgroundColor: '#004d00' }}>
+      {mediaError && (
+        <div style={{
+          position: 'fixed', top: '0', left: '0', width: '100%', height: '100%',
+          backgroundColor: 'rgba(0, 0, 0, 0.7)', display: 'flex', justifyContent: 'center',
+          alignItems: 'center', zIndex: 1000,
+        }}>
+          <div style={{
+            backgroundColor: '#ffdddd', color: '#d8000c', border: '1px solid #d8000c',
+            padding: '20px', borderRadius: '8px', textAlign: 'center', maxWidth: '400px',
+          }}>
+            <h3>Erreur d'accès aux médias</h3>
+            <p>Impossible d'accéder à votre caméra et/ou microphone.</p>
+            <p>Veuillez vérifier que vous avez autorisé l'accès dans les paramètres de votre navigateur pour ce site.</p>
+            <p><code>{mediaError.name}: {mediaError.message}</code></p>
+          </div>
+        </div>
+      )}
       {isGamePhase && gameState && me ? (
         <GameTable
           gameState={gameState}
@@ -157,6 +182,7 @@ function App() {
           onPlayCard={handlePlayCard}
           localStream={localStream}
           remoteStreams={remoteStreams}
+          peerStatuses={peerStatuses}
         />
       ) : (
         // Fallback for non-game phases or if gameState/me is null
