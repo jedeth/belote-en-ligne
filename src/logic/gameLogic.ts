@@ -1,6 +1,7 @@
 // src/logic/gameLogic.ts
 
-import { Suit, Rank, Card, PlayedCard, Team } from '../types/belote.ts';
+// Ligne corrigée
+import { type Suit, type Rank, type Card, type PlayedCard, type Team } from '../types/belote.js';
 
 const suits: Suit[] = ['Pique', 'Coeur', 'Carreau', 'Trefle'];
 const ranks: Rank[] = ['7', '8', '9', '10', 'Valet', 'Dame', 'Roi', 'As'];
@@ -58,29 +59,119 @@ export function determineTrickWinner(trick: PlayedCard[], trumpSuit: Suit): Play
   return winningCard;
 }
 
-export function calculateScores(teams: Team[], takerTeamName: string, dixDeDerWinnerTeamName: string, trumpSuit: Suit) {
+// ### MODIFICATION PRINCIPALE ICI ###
+export function calculateRoundScores(
+    teams: Team[], 
+    takerTeamName: string, 
+    dixDeDerWinnerTeamName: string, 
+    trumpSuit: Suit,
+    isCapot: boolean
+): { scores: { [teamName: string]: number }, result: 'succeeded' | 'failed' } {
+  
   const takerTeam = teams.find(t => t.name === takerTeamName)!;
   const defendingTeam = teams.find(t => t.name !== takerTeamName)!;
-
-  let takerPoints = 0;
-  for (const card of takerTeam.collectedCards) {
-    takerPoints += card.suit === trumpSuit ? CARD_POINTS_TRUMP[card.rank] : CARD_POINTS_NORMAL[card.rank];
-  }
   
-  let defenderPoints = 0;
-  for (const card of defendingTeam.collectedCards) {
-    defenderPoints += card.suit === trumpSuit ? CARD_POINTS_TRUMP[card.rank] : CARD_POINTS_NORMAL[card.rank];
-  }
-  
-  if (takerTeam.name === dixDeDerWinnerTeamName) takerPoints += 10;
-  else defenderPoints += 10;
+  let takerContractPoints = 0;
+  let defenderContractPoints = 0;
+  let result: 'succeeded' | 'failed';
 
-  if (takerPoints > defenderPoints) {
-    console.log(`Contrat réussi: ${takerPoints} à ${defenderPoints}`);
-    takerTeam.score += takerPoints;
-    defendingTeam.score += defenderPoints;
+  // ### DÉBUT DE LA LOGIQUE CORRIGÉE ###
+
+  // 1. On calcule les points des cartes de chaque équipe
+  let takerCardPoints = takerTeam.collectedCards.reduce((sum, card) => sum + (card.suit === trumpSuit ? CARD_POINTS_TRUMP[card.rank] : CARD_POINTS_NORMAL[card.rank]), 0);
+  let defenderCardPoints = defendingTeam.collectedCards.reduce((sum, card) => sum + (card.suit === trumpSuit ? CARD_POINTS_TRUMP[card.rank] : CARD_POINTS_NORMAL[card.rank]), 0);
+
+  // 2. On ajoute le "dix de der"
+  if (takerTeam.name === dixDeDerWinnerTeamName) {
+    takerCardPoints += 10;
   } else {
-    console.log(`Contrat chuté: ${takerPoints} à ${defenderPoints}`);
-    defendingTeam.score += 162;
+    defenderCardPoints += 10;
   }
+
+  // 3. On calcule les points du contrat (chute, capot, ou réussi)
+  if (isCapot) {
+      console.log(`Capot réussi par l'équipe ${takerTeamName}`);
+      takerContractPoints = 252;
+      defenderContractPoints = 0;
+      result = 'succeeded';
+  } else if (takerCardPoints >= 82 && takerCardPoints > defenderCardPoints) {
+      console.log(`Contrat réussi: ${takerCardPoints} à ${defenderCardPoints}`);
+      takerContractPoints = takerCardPoints;
+      defenderContractPoints = defenderCardPoints;
+      result = 'succeeded';
+  } else {
+      console.log(`Contrat chuté: ${takerCardPoints} à ${defenderCardPoints}`);
+      takerContractPoints = 0;
+      defenderContractPoints = 162;
+      result = 'failed';
+  }
+
+  // 4. On ajoute les points de la belote, qui sont "imprenables"
+  const takerBelotePoints = takerTeam.beloteState === 'rebelote' ? 20 : 0;
+  const defenderBelotePoints = defendingTeam.beloteState === 'rebelote' ? 20 : 0;
+
+  // 5. On calcule le score final de la manche
+  const finalTakerScore = takerContractPoints + takerBelotePoints;
+  const finalDefenderScore = defenderContractPoints + defenderBelotePoints;
+
+  // ### FIN DE LA LOGIQUE CORRIGÉE ###
+
+  return {
+      scores: {
+        [takerTeam.name]: finalTakerScore,
+        [defendingTeam.name]: finalDefenderScore,
+      },
+      result: result
+  };
+}
+export function createFixedHandForBeloteTest(): { hands: Card[][], biddingCard: Card, deck: Card[] } {
+  // On s'assure que le joueur 1 a la belote à Coeur
+  const player1Hand: Card[] = [
+    { suit: 'Coeur', rank: 'Roi' },
+    { suit: 'Coeur', rank: 'Dame' },
+    { suit: 'Coeur', rank: 'As' },
+    { suit: 'Pique', rank: '10' },
+    { suit: 'Carreau', rank: 'As' },
+  ];
+
+  const player2Hand: Card[] = [
+    { suit: 'Trefle', rank: 'As' },
+    { suit: 'Trefle', rank: '10' },
+    { suit: 'Pique', rank: 'As' },
+    { suit: 'Coeur', rank: '7' },
+    { suit: 'Carreau', rank: '10' },
+  ];
+
+  const player3Hand: Card[] = [
+    { suit: 'Carreau', rank: 'Roi' },
+    { suit: 'Carreau', rank: 'Dame' },
+    { suit: 'Pique', rank: 'Roi' },
+    { suit: 'Trefle', rank: 'Roi' },
+    { suit: 'Coeur', rank: '8' },
+  ];
+  
+  const player4Hand: Card[] = [
+    { suit: 'Pique', rank: 'Dame' },
+    { suit: 'Pique', rank: 'Valet' },
+    { suit: 'Trefle', rank: 'Dame' },
+    { suit: 'Trefle', rank: 'Valet' },
+    { suit: 'Coeur', rank: '9' },
+  ];
+
+  const hands = [player1Hand, player2Hand, player3Hand, player4Hand];
+
+  // La carte retournée sera un Coeur pour encourager la prise
+  const biddingCard: Card = { suit: 'Coeur', rank: '10' };
+
+  // Le reste du paquet (peu importe pour ce test)
+  const deck: Card[] = [
+    { suit: 'Carreau', rank: '9' }, { suit: 'Carreau', rank: '8' }, { suit: 'Carreau', rank: '7' },
+    { suit: 'Pique', rank: '9' }, { suit: 'Pique', rank: '8' }, { suit: 'Pique', rank: '7' },
+    { suit: 'Trefle', rank: '9' }, { suit: 'Trefle', rank: '8' }, { suit: 'Trefle', rank: '7' },
+    { suit: 'Coeur', rank: 'Valet' },
+    { suit: 'Carreau', rank: 'Valet' },
+    { suit: 'Trefle', rank: 'As' },
+  ];
+
+  return { hands, biddingCard, deck };
 }

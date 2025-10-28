@@ -12,6 +12,16 @@ export interface Player {
   id: string;
   name: string;
   hand: Card[];
+  isConnected: boolean;
+}
+
+export interface Team {
+  name: string;
+  players: Player[];
+  score: number;
+  collectedCards: Card[];
+  beloteState: 'none' | 'belote' | 'rebelote';
+  beloteAnnounceMissed: boolean;
 }
 
 export interface PlayedCard {
@@ -19,23 +29,28 @@ export interface PlayedCard {
   card: Card;
 }
 
-export interface Team {
-    name: 'Équipe A' | 'Équipe B';
-    players: Player[];
-    score: number;
-    collectedCards: Card[];
+export interface ScoreHistoryEntry {
+  round: number;
+  scores: { [teamName: string]: number };
+  takerTeamName: string;
+  result: 'succeeded' | 'failed';
 }
 
-export type GamePhase = 'waiting' | 'bidding' | 'bidding_round_2' | 'playing' | 'end';
-
 export interface GameState {
-  phase: GamePhase;
+  phase: 'waiting' | 'bidding' | 'bidding_round_2' | 'playing' | 'end' | 'game_over';
   players: Player[];
   teams: Team[];
   deck: Card[];
   biddingCard?: Card;
   currentPlayerTurn?: string;
-  takerId?: string; // On garde l'ID du preneur
   trumpSuit?: Suit;
+  takerTeamName?: string;
+  beloteHolderId?: string;
   currentTrick: PlayedCard[];
+  roundPoints?: { [teamName: string]: number };
+  contractResult?: 'succeeded' | 'failed';
+  scoreHistory: ScoreHistoryEntry[];
+  trickHistory: Card[][]; // <--- PROPRIÉTÉ AJOUTÉE
 }
+
+export const WINNING_SCORE = 1000;
